@@ -5,13 +5,13 @@ from src.shared.exceptions.rpa_exceptions import LoginFailedException
 class LoginPage(BaseCRMPage):
     """CRM login page interactions."""
 
-    PATH = "/login"
+    PATH = "/crm-auto"
 
     # Locators
-    _USERNAME_INPUT = (By.ID, "username")
-    _PASSWORD_INPUT = (By.ID, "password")
-    _SUBMIT_BTN     = (By.CSS_SELECTOR, "button[type='submit']")
-    _ERROR_MSG      = (By.CSS_SELECTOR, ".alert-error")
+    _USERNAME_INPUT = (By.XPATH, '//input[@placeholder="Usuário"]')
+    _PASSWORD_INPUT = (By.XPATH, '//input[@placeholder="Senha"]')
+    _SUBMIT_BTN     = (By.XPATH, '//button[.//span[text()="Acessar"]]')
+    _ERROR_MSG      = (By.XPATH, '//div[contains(@class,"p-toast-summary") and contains(text(),"Verifique se as informações foram digitadas corretamente")]')
 
     def open(self) -> "LoginPage":
         self.go_to(self.full_url(self.PATH))

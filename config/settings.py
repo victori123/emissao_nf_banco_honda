@@ -9,14 +9,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # --- Browser ---
 HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
 BROWSER = os.getenv("BROWSER", "chrome")          # chrome | firefox
-IMPLICIT_WAIT = int(os.getenv("IMPLICIT_WAIT", 10))
-PAGE_LOAD_TIMEOUT = int(os.getenv("PAGE_LOAD_TIMEOUT", 30))
+IMPLICIT_WAIT = int(os.getenv("IMPLICIT_WAIT", 30))
+PAGE_LOAD_TIMEOUT = int(os.getenv("PAGE_LOAD_TIMEOUT", 120))
 
 # --- CRM ---
-CRM_BASE_URL = os.getenv("CRM_BASE_URL", "https://crm.example.com")
+CRM_BASE_URL = os.getenv("CRM_BASE_URL", "http://crm.grupoaccampo.com.br")
 
 # --- Logistics ---
-LOGISTICS_BASE_URL = os.getenv("LOGISTICS_BASE_URL", "https://logistics.example.com")
+LOGISTICS_BASE_URL = os.getenv("LOGISTICS_BASE_URL", "")
 
 # --- Paths ---
 DATA_INPUT_DIR  = BASE_DIR / "data" / "input"

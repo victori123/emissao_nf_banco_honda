@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from config.settings import IMPLICIT_WAIT
 from src.shared.utils.logger import get_logger
+from time import sleep
 
 class BasePage:
     """Base class for all Page Objects (CRM and Logistics)."""
@@ -39,7 +40,7 @@ class BasePage:
         return self.wait.until(EC.element_to_be_clickable((by, value)))
 
     def click(self, by: str, value: str) -> None:
-        self.find_clickable(by, value).click()
+        self.find(by, value).click()
 
     def fill(self, by: str, value: str, text: str) -> None:
         el = self.find_clickable(by, value)
@@ -55,6 +56,11 @@ class BasePage:
             return True
         except Exception:
             return False
+        
+    def js_click(self, by: str, value: str) -> None:
+        el = self.find(by, value)
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+        self.driver.execute_script("arguments[0].click();", el)
 
     def take_screenshot(self, name: str) -> None:
         from config.settings import LOGS_DIR
@@ -62,3 +68,18 @@ class BasePage:
         path = LOGS_DIR / f"{datetime.now():%Y%m%d_%H%M%S}_{name}.png"
         self.driver.save_screenshot(str(path))
         self.logger.info(f"Screenshot saved: {path}")
+
+    def switch_to_new_tab(self) -> None:
+        self.driver.switch_to.window(self.driver.window_handles[-1])
+
+    def switch_to_tab(self, indice: int = 0) -> None:
+        self.driver.switch_to.window(self.driver.window_handles[indice])
+
+    def enable_and_click(self, by: str, value: str) -> None:
+        el = self.find(by, value)
+        self.driver.execute_script("arguments[0].classList.remove('p-disabled');", el)
+        self.driver.execute_script("arguments[0].removeAttribute('disabled');", el)
+        self.driver.execute_script("arguments[0].click();", el)
+
+    def sleep_withou_condition(self, time_sleep:int)-> None:
+        sleep(time_sleep)

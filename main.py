@@ -1,10 +1,3 @@
-"""
-RPA main entry point.
-Usage:
-    python main.py --bot crm
-    python main.py --bot logistics
-    python main.py --bot all
-"""
 import argparse
 import sys
 from src.shared.utils.logger import get_logger
