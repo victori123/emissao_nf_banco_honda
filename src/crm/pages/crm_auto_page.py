@@ -1,6 +1,8 @@
 from selenium.webdriver.common.by import By
 from src.crm.pages.base_crm_page import BaseCRMPage
 from src.shared.exceptions.rpa_exceptions import DataExtractionException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 
 class CrmAutoPage(BaseCRMPage):
     """CRM Auto — confirms successful navigation."""
@@ -24,7 +26,23 @@ class CrmAutoPage(BaseCRMPage):
     _PESQUISAR = (By.ID, "btnPesquisar")
     _PAINEL_AGUARDANDO_NF = (By.XPATH, "//div[contains(@class,'p-panel-header')]//span[contains(text(),'Aguarda Emissão da Nota Fiscal')]")
 
-    _TABLE_ROWS = (By.CSS_SELECTOR, "custom-grid .body-grid .lista-dado")
+    _TABLE_ROWS = (By.XPATH, "//*[@id='gbAguardaEmissaoNotaFiscal']//div[contains(@class,'lista-dados')]")
+
+    _VEICULOS_DETAILS = (By.XPATH, 
+        "//label[normalize-space()='VEÍCULO']"
+        "/ancestor::div[contains(@class,'p-panel-header')]"
+        "//button[contains(@class,'p-panel-toggler')]"
+    )
+    _FICHA_DETAILS = (By.XPATH, 
+        "//div[contains(@class,'p-panel-header')][contains(.,'FICHA')]"
+        "//button[contains(@class,'p-panel-toggler')]"
+    )
+    _NEGOCIACAO_DETAILS = (By.XPATH, 
+        "//div[contains(@class,'p-panel-header')][contains(.,'NEGOCIAÇÃO')]"
+        "//button[contains(@class,'p-panel-toggler')]"
+    )
+
+    _CLOSE_DATAILS = (By.XPATH, '//a[contains(@class,"nbs-tfpage-control")]')
 
     def is_loaded(self) -> bool:
         return self.find(*self._OPEN_MENU)
@@ -42,10 +60,133 @@ class CrmAutoPage(BaseCRMPage):
 
     def search(self)-> bool:
         self.clean_empresa()
-        self.click(*self._ABA_PROPOSTA)
         self.click(*self._PESQUISAR)
-        self.sleep_withou_condition(4)
+        self.sleep_withou_condition(6)
+        self.click(*self._ABA_PROPOSTA)
         self.click(*self._PAINEL_AGUARDANDO_NF)
+
+
+    def _safe_get_text(self, xpath, by=By.XPATH):
+        try:
+            el = self.driver.find_element(by, xpath)
+            return el.text.strip()
+        except:
+            return None
+
+    def _safe_get_text_element_on_memory(self, item, by, xpath):
+        try:
+            return item.find_element(by, xpath).text.strip()
+        except:
+            return None
+
+    def extrair_dados_ficha(self)-> dict[any]:
+        dados = {}
+        #expand details
+        try:
+            self.find_clickable(*self._VEICULOS_DETAILS)
+            self.js_click(*self._VEICULOS_DETAILS)
+            self.js_click(*self._FICHA_DETAILS)
+            self.js_click(*self._NEGOCIACAO_DETAILS)
+        except:
+            pass
+
+        # ── CABEÇALHO ────────────────────────────────────────────────────
+        dados["nome_evento"] = self._safe_get_text(
+            "//div[contains(@class,'client-name')]//label"
+        )
+        dados["codigo_evento"] = self._safe_get_text(
+            "//label[contains(@class,'copy-event-code')]"
+        )
+
+        # ── LEAD ─────────────────────────────────────────────────────────
+        lead_base = "//frm-detalhes-lead-dados"
+
+        dados["lead_email"] = self._safe_get_text( f"{lead_base}//*[contains(@class,'pi-envelope')]/following::label[1]"
+        )
+        dados["lead_whatsapp"] = self._safe_get_text( f"{lead_base}//*[contains(@class,'pi-whatsapp')]/following::label[1]"
+        )
+        dados["lead_telefone"] = self._safe_get_text( f"{lead_base}//*[contains(@class,'pi-phone')]/following::label[1]"
+        )
+        dados["lead_cpf"] = self._safe_get_text(
+            f"{lead_base}//label[contains(text(),' CPF ')]/following::label[1]"
+        )
+        dados["lead_proprietario"] = self._safe_get_text(
+            f"{lead_base}//label[contains(@class,'LblMudarDescClienteProprietario')]/preceding::label[1]"
+        )
+        dados["lead_classe"] = self._safe_get_text(
+            f"{lead_base}//label[contains(text(),' Classe ')]/following::label[1]"
+        )
+
+        # ── VEÍCULO ──────────────────────────────────────────────────────
+        veiculo_base = "//frm-detalhes-veiculo-dados"
+
+        campos_veiculo = {
+            "veiculo_modelo":       "Modelo",
+            "veiculo_ano_mod":      "Ano/Mod",
+            "veiculo_linha":        "Linha",
+            "veiculo_interesse":    "Interesse",
+            "veiculo_origem":       "Origem",
+            "veiculo_cor":          "Cor",
+            "veiculo_combustivel":  "Combustivel",
+            "veiculo_motor":        "Motor",
+            "veiculo_chassi":       "Chassi Completo",
+            "veiculo_renavam":      "Renavam",
+            "veiculo_placa":        "Placa",
+            "veiculo_patio":        "Patio",
+            "veiculo_dias_patio":   "Dias Patio",
+            "veiculo_situacao":     "Situação",
+            "veiculo_nota_fabrica": "Nota Fábrica",
+            "veiculo_emissao":      "Emissão",
+            "veiculo_empresa":      "Empresa",
+        }
+
+        for chave, label in campos_veiculo.items():
+            if chave == 'veiculo_modelo':
+                dados[chave] = self._safe_get_text(
+
+                    f"{veiculo_base}//label[normalize-space()='{label}']/following::label[2]"
+                )
+            else:
+                dados[chave] = self._safe_get_text(
+
+                    f"{veiculo_base}//label[normalize-space()='{label}']/following::label[1]"
+                )
+            
+
+        # ── Ficha ─────────────────────────────────────────────────────
+        prop_base = "//frm-detalhe-ficha"
+
+        dados["ficha_tipo_evento"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Tipo Evento')]/following::label[1]"
+        )
+        dados["ficha_status"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Status')]/following::label[1]"
+        )
+        dados["ficha_empresa"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Empresa')]/following::label[1]"
+        )
+        dados["ficha_data_criacao"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Data Criação')]/following::label[1]"
+        )
+        dados["ficha_data_resgate"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Data Resgate')]/following::label[1]"
+        )
+        dados["ficha_data_fechamento"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Data Fechamento')]/following::label[1]"
+        )
+        dados["ficha_midea"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Mídia')]/following::label[1]"
+        )
+        
+        dados["ficha_assunto"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Assunto')]/preceding::textarea[1]"
+        )
+
+        dados["ficha_observacao"] = self._safe_get_text(
+            f"{prop_base}//label[contains(text(),'Observação a ser impressa na Proposta')]/preceding::textarea[1]"
+        )
+
+        return dados
 
     def extract_rows(self) -> list[dict]:
         
@@ -57,40 +198,13 @@ class CrmAutoPage(BaseCRMPage):
         resultados = []
 
         for item in itens:
-            try:
-                status = item.find_element(By.CSS_SELECTOR, "label.nbs-tflabel").text.strip()
-            except:
-                status = ""
-
-            try:
-                responsavel = item.find_element(By.CSS_SELECTOR, ".responsavel-evento span").text.strip()
-            except:
-                responsavel = ""
-
-            try:
-                numero = item.find_element(By.CSS_SELECTOR, ".font-semibold").text.strip()
-            except:
-                numero = ""
-
-            try:
-                cliente = item.find_element(By.CSS_SELECTOR, ".cliente").text.strip()
-            except:
-                cliente = ""
-
-            try:
-                tempo = item.find_element(By.CSS_SELECTOR, "i.pi-clock + span").text.strip()
-            except:
-                tempo = ""
-
-            try:
-                email = item.find_element(By.CSS_SELECTOR, ".trunk-text").text.strip()
-            except:
-                email = ""
-
-            try:
-                produto = item.find_element(By.CSS_SELECTOR, ".vehicle span").text.strip()
-            except:
-                produto = ""
+            status = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, "label.nbs-tflabel")
+            responsavel = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".responsavel-evento span")
+            numero = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".font-semibold")
+            cliente = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".cliente")
+            tempo = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, "i.pi-clock + span")
+            email = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".trunk-text")
+            produto = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".vehicle span")
 
             try:
                 info_extra = item.find_elements(By.CSS_SELECTOR, ".w-5 span")
@@ -99,6 +213,11 @@ class CrmAutoPage(BaseCRMPage):
             except:
                 ano = ""
                 chassi = ""
+
+            item.click()
+            detalhes = self.extrair_dados_ficha()
+            close = self.driver.find_elements(*self._CLOSE_DATAILS)[1]
+            close.click()
 
             resultados.append({
                 "status": status,
@@ -109,7 +228,8 @@ class CrmAutoPage(BaseCRMPage):
                 "email": email,
                 "produto": produto,
                 "ano": ano,
-                "chassi": chassi
+                "chassi": chassi,
+                **detalhes
             })
 
         self.logger.info(f"Extracted {len(resultados)} NF(s) from current page")
