@@ -215,9 +215,11 @@ class CrmAutoPage(BaseCRMPage):
                 chassi = ""
 
             item.click()
+            self.sleep_withou_condition(3)
             detalhes = self.extrair_dados_ficha()
             close = self.driver.find_elements(*self._CLOSE_DATAILS)[1]
             close.click()
+            self.sleep_withou_condition(3)
 
             resultados.append({
                 "status": status,

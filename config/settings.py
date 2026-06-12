@@ -16,7 +16,7 @@ PAGE_LOAD_TIMEOUT = int(os.getenv("PAGE_LOAD_TIMEOUT", 120))
 CRM_BASE_URL = os.getenv("CRM_BASE_URL", "http://crm.grupoaccampo.com.br")
 
 # --- Logistics ---
-LOGISTICS_BASE_URL = os.getenv("LOGISTICS_BASE_URL", "")
+LOGISTICS_BASE_URL = os.getenv("LOGISTICS_BASE_URL", r"C:\NBS\NBSShortCut")
 
 # --- Paths ---
 DATA_INPUT_DIR  = BASE_DIR / "data" / "input"

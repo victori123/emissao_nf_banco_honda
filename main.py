@@ -9,8 +9,9 @@ def run_crm():
     run_crm_bot()
 
 def run_logistics():
-    # Will be implemented in the next phase
-    logger.info("Logistics bot not yet implemented.")
+    from src.logistics.nbs_bot import NBSBot
+    bot = NBSBot()
+    bot.run()
 
 def main():
     parser = argparse.ArgumentParser(description="RPA Runner")

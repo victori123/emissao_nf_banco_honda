@@ -1,7 +1,3 @@
-"""
-CRM Bot entry point.
-Manages the driver lifecycle and delegates to flows.
-"""
 from src.shared.browser.driver_factory import create_driver
 from src.crm.flows import extract_nfs_flow
 from src.shared.utils.logger import get_logger
