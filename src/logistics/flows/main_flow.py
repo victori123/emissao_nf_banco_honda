@@ -9,10 +9,10 @@ class NBSMainFlow:
     def __init__(self, app_path=LOGISTICS_BASE_URL):
         self.session = NBSSession(app_path)
 
-    def run(self, user, password):
+    def run(self, user, password, server):
         window = self.session.start()
 
         list_chassis = [] 
-        LoginFlow(window).execute(user, password)
+        LoginFlow(window).execute(user, password, server)
         ChassisSearchFlow(window).execute(list_chassis)
         NFEmissionFlow(window).execute()

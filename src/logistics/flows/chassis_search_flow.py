@@ -11,12 +11,10 @@ class ChassisSearchFlow:
         logger.info(f"Buscando chassis: {chassis}")
 
         try:
-            self.page.search(chassis)
-            self.page.select_result()
-
+            self.page.clicar_propostas()
+            self.page.search('9C2KD0810TR108453')
             logger.info("Chassis localizado com sucesso")
 
         except Exception as e:
-            logger.error(f"Erro na busca do chassis: {chassis}", exc_info=True)
+            logger.error(f"Erro na busca chassis: {chassis}", exc_info=True)
             raise
-

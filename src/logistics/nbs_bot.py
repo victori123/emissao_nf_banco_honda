@@ -9,6 +9,7 @@ class NBSBot:
         self.flow = NBSMainFlow()
         self.user = LogisticsCredentials.USERNAME
         self.password = LogisticsCredentials.PASSWORD
+        self.server = LogisticsCredentials.SERVER
 
     def run(self):
-        self.flow.run(self.user, self.password)
+        self.flow.run(self.user, self.password, self.server)

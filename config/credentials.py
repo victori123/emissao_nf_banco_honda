@@ -10,3 +10,4 @@ class CRMCredentials:
 class LogisticsCredentials:
     USERNAME: str = os.getenv("LOGISTICS_USERNAME", "")
     PASSWORD: str = os.getenv("LOGISTICS_PASSWORD", "")
+    SERVER: str = os.getenv("LOGISTICS_SERVER", "")
