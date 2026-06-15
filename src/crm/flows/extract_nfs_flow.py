@@ -6,7 +6,7 @@ from src.shared.utils.file_handler import save_csv
 from src.shared.utils.logger import get_logger
 from src.shared.utils.retry import retry
 from config.credentials import CRMCredentials
-from config.settings import DATA_OUTPUT_DIR
+from config.settings import DATA_INPUT_DIR
 from datetime import datetime
 
 logger = get_logger(__name__)
@@ -37,7 +37,7 @@ def run(driver: WebDriver) -> list[dict]:
     logger.info(f"Total NFs collected: {len(all_nfs)}")
 
     # Step 4 – Persist results
-    output_path = DATA_OUTPUT_DIR / f"crm_nfs_{datetime.now():%Y%m%d_%H%M%S}.csv"
+    output_path = DATA_INPUT_DIR / f"crm_nfs_{datetime.now():%Y%m%d_%H%M%S}.csv"
     save_csv(all_nfs, output_path)
     logger.info(f"Nfs saved to {output_path}")
     logger.info("=== END: extract_nfs_flow ===")

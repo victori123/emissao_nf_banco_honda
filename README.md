@@ -13,7 +13,7 @@ rpa_project/
 │   │   ├── pages/    # Page Objects (uma classe por tela)
 │   │   ├── components/ # Componentes reutilizáveis (forms, tables)
 │   │   └── flows/    # Orquestração de fluxos de negócio
-│   ├── logistics/    # (próxima fase) Sistema de logística
+│   ├── logistics/    # Sistema de logística em construção (próxima fase)
 │   └── shared/       # Código comum entre bots
 │       ├── browser/  # Driver factory e BasePage
 │       ├── utils/    # Logger, retry, file handler
