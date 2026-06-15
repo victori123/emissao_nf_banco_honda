@@ -1,6 +1,8 @@
 from src.shared.utils.logger import get_logger
 from pywinauto import Desktop
 from pywinauto import Desktop, Application
+from pywinauto.keyboard import send_keys
+from time import sleep
 
 logger = get_logger(__name__)
 
@@ -64,49 +66,80 @@ class ChassisSearchPage:
             logger.error(f"Erro ao clicar em 'Propostas': {e}")
             raise
 
-    def search(self, chassis: str):
+    
+    def safe_get(self, lista, idx):
+        try:
+            return str(lista[idx].element_info.name).strip()
+        except:
+            return None
+
+
+    def search(self, chassis: str)-> dict[any]:
         try:
             logger.info(f"Iniciando busca por chassis {chassis}")
-            
-            regiao = self.window.child_window(
-                title="Região",
-                control_type="Pane"
-            )
-            self.window.click_input(coords=regiao.rectangle().mid_point())
-
-            logger.info("Clicou em 'Região'")
-
-            logger.info("Clicou em 'Região'")
-            radio_chassi = self.window.child_window(
-                title="Chassi",
-                control_type="RadioButton"
-            )
-
-            radio_chassi.click_input()
-
-            logger.info("Selecionou 'Chassi'")
-            edits = self.window.descendants(control_type="Edit")
-
-            if not edits:
-                raise Exception("Nenhum campo Edit encontrado")
-
-            campo_chassi = edits[0]  # ajuste se necessário
-
-            campo_chassi.click_input()
-            campo_chassi.type_keys(chassis, with_spaces=True, set_foreground=True)
-
-            logger.info(f"Digitou o chassis: {chassis}")
+            dados_encontrado = {}
+            regiao_ctrl = {}        
+            element_map = {}
             panes = self.window.descendants(control_type="Pane")
+            for ctrl in self.window.descendants():
+                try:
+                    name = (ctrl.element_info.name or "").strip()
+                    if name:
+                        element_map[name] = ctrl
+                    if 'Região' in ctrl.element_info.name:
+                        regiao_ctrl = ctrl
+                except:
+                    pass
+            
+            regiao_ctrl.click_input()
+            logger.info("Clicou em 'Região'")
+            element_map["Chassi"].select()
+            logger.info("Selecionou 'Chassi'")
+            campo_pesquisa = panes[62]          
+            campo_pesquisa.click_input()
+            send_keys(str(chassis))
+            logger.info(f"Digitou o chassis: {chassis}")
 
-            if len(panes) < 5:
-                raise Exception("Menos de 5 panes encontrados")
+            consultar_btn = None
 
-            consultar_btn = panes[4]  # índice 4 = 5º elemento
+            for pane in self.window.descendants(control_type="Pane"):
+                try:
+                    rect = pane.rectangle()
+                    # aproximação da posição do botão
+                    if (
+                        1400 < rect.left < 1500 and
+                        700 < rect.top < 800
+                    ):
+                        consultar_btn = pane
+                        break           
+                except:
+                    pass
 
             consultar_btn.click_input()
-
             logger.info("Clicou em 'Consultar'")
+            sleep(3)
+            todos = self.window.descendants()
 
+            proposta_localizada = self.safe_get(todos, 9)
+
+            if proposta_localizada != '0':
+
+                dados_encontrado['proposta'] = self.safe_get(todos, 9)
+                dados_encontrado['descricao_patio'] = self.safe_get(todos, 12)
+                dados_encontrado['user'] = self.safe_get(todos, 13)
+                dados_encontrado['modelo'] = self.safe_get(todos, 14)
+                dados_encontrado['avaliKAPTALIZEacao'] = self.safe_get(todos, 15)
+                dados_encontrado['data_validade'] = self.safe_get(todos, 16)
+                dados_encontrado['data_emissao'] = self.safe_get(todos, 17)
+                dados_encontrado['datNBSa_reserva'] = self.safe_get(todos, 18)
+
+                logger.info(f"Proposta localizada {dados_encontrado}")
+            
+            else:
+                logger.info(f"Proposta não localizada")
+
+            return dados_encontrado        
+    
         except Exception as e:
             logger.error(f"Erro na busca por chassis: {e}")
             raise

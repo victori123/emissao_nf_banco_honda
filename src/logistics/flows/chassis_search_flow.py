@@ -12,7 +12,7 @@ class ChassisSearchFlow:
 
         try:
             self.page.clicar_propostas()
-            self.page.search('9C2KD0810TR108453')
+            self.page.search('9C2JC9710VR111202547')
             logger.info("Chassis localizado com sucesso")
 
         except Exception as e:
