@@ -1,5 +1,4 @@
 from src.shared.utils.logger import get_logger
-from pywinauto import Desktop
 from pywinauto import Desktop, Application
 from pywinauto.keyboard import send_keys
 from time import sleep
@@ -10,6 +9,8 @@ logger = get_logger(__name__)
 class ChassisSearchPage:
     def __init__(self, window):
         self.window = window
+        self.original_window = window
+        self.propostas_handle = None
 
     def _get_buttons(self):
         return self.window.descendants(control_type="Button")
@@ -22,7 +23,7 @@ class ChassisSearchPage:
 
     def clicar_propostas(self):
         """
-        Clica no menu 'Propostas'
+        Clica no menu 'Propostas' e troca para a nova janela que abre.
         """
         try:
             logger.info("Tentando clicar no menu 'Propostas'")
@@ -58,6 +59,7 @@ class ChassisSearchPage:
 
             logger.info(f"Handle encontrado: {nova_handle}")
 
+            self.propostas_handle = nova_handle
             app = Application(backend="uia").connect(handle=nova_handle)
             self.window = app.window(handle=nova_handle)
             logger.info("Tela 'Propostas' aberta com sucesso")
@@ -143,3 +145,22 @@ class ChassisSearchPage:
         except Exception as e:
             logger.error(f"Erro na busca por chassis: {e}")
             raise
+        finally:
+            self._close_propostas_window()
+
+    def _close_propostas_window(self):
+        if not self.propostas_handle:
+            return
+
+        try:
+            if self.window is not None and self.window != self.original_window:
+                logger.info("Fechando janela 'Propostas' e retornando para a janela principal")
+                self.window.close()
+
+            self.window = self.original_window
+            self.original_window.set_focus()
+            self.propostas_handle = None
+
+        except Exception as e:
+            logger.warning(f"Falha ao fechar janela 'Propostas': {e}", exc_info=True)
+            self.window = self.original_window
