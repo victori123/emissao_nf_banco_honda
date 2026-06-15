@@ -42,7 +42,7 @@ class NBSMainFlow:
 
         updated_rows = []
         for row in rows:
-            chassis = (row.get("veiculo_chassi") or row.get("chassi") or "").strip()
+            chassis = (row.get("veiculo_chassi") or "").strip()
             row["logistics_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             if not chassis:
@@ -54,7 +54,7 @@ class NBSMainFlow:
 
             try:
                 search_result = ChassisSearchFlow(window).execute(chassis)
-                NFEmissionFlow(window).execute()
+                #NFEmissionFlow(window).execute()
 
                 row["logistics_status"] = "success"
                 row["logistics_error"] = ""
