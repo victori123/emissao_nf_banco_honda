@@ -1,9 +1,167 @@
+from pywinauto.mouse import click
+from pywinauto import Desktop, Application
+from time import sleep
+from pywinauto.keyboard import send_keys
+from src.shared.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 class NFEmissionPage:
     def __init__(self, window):
         self.window = window
 
+    def dentro(self, v, alvo, tol):
+        return (alvo - tol) < v < (alvo + tol)
+    
     def emitir_nf(self):
-        self.window.child_window(title="Emitir NF").click()
+        painel_botoes = None
+        all = self.window.descendants()
+        for pane in all:#self.window.descendants(control_type="Pane"):
+
+            try:
+                rect = pane.rectangle()
+                largura = rect.right - rect.left
+                altura = rect.bottom - rect.top
+
+                if (
+                    self.dentro(rect.left, 374, 60) and
+                    self.dentro(rect.top, 803, 60) and
+                    1100 < largura < 1300 and
+                    40 < altura < 80
+                ):
+                    painel_botoes = pane
+                    break
+            except:
+                pass
+
+
+        if not painel_botoes:
+             raise Exception("Botão 'Vender' não encontrado")
+        
+        self.clicar_vender(painel_botoes)
+        
+        popup = self.window.child_window(
+            title="Informação",
+            control_type="Window"
+        )
+        wrapper = popup.wrapper_object()
+        mensagem = " ".join(
+            t.window_text()
+            for t in wrapper.descendants(control_type="Text")
+            if t.window_text()
+        )
+
+        if "A nota fiscal será emitida para o cliente" not in mensagem:
+            return mensagem
+        
+        popup.child_window(title="OK", control_type="Button").click_input()
+        sleep(3)
+        nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
+        app = Application(backend="uia").connect(handle=nova_handle)
+        self.window = app.window(handle=nova_handle)
+
+        aba_corpo_nota_fiscal = None
+        aba_dados_nota_fiscal = None
+        aba_fechamento_observacao = None
+        for ctrl in self.window.descendants():
+            try:
+                if 'Corpo da Nota Fiscal' in ctrl.element_info.name:
+                    aba_corpo_nota_fiscal = ctrl
+
+                if 'Dados da Nota Fiscal' in ctrl.element_info.name:
+                    aba_dados_nota_fiscal = ctrl
+                
+                if 'Fechamento/Observação' in ctrl.element_info.name:
+                    aba_fechamento_observacao = ctrl
+            except:
+                pass
+        
+        aba_corpo_nota_fiscal.click_input()
+        sleep(2)
+        
+        painel_incluir = next(
+            (
+                p for p in self.window.descendants(control_type="Pane")
+                if (
+                    p.element_info.class_name == "TPanel" and
+                    480 < p.rectangle().left < 520 and
+                    350 < p.rectangle().top < 390 and
+                    800 < (p.rectangle().right - p.rectangle().left) < 1200 and
+                    40 < (p.rectangle().bottom - p.rectangle().top) < 100
+                )
+            ),
+            None
+        )
+        self.window.set_focus()
+        send_keys("{TAB 3}")
+        send_keys("{UP 10}")
+        send_keys("{ENTER}")
+        send_keys("{UP}")
+        send_keys("Observação da planilha", with_spaces=True)
+        send_keys("{ENTER}")
+
+        self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
+
+        aba_dados_nota_fiscal.click_input()
+        
+        observacao = next(
+            (
+                e for e in self.window.descendants(control_type="Edit")
+                if (
+                    e.element_info.class_name == "TDBEdit" and
+                    580 < e.rectangle().left < 620 and
+                    380 < e.rectangle().top < 420
+                )
+            ),
+            None
+        )
+        
+        if observacao:
+            observacao.click_input()
+            observacao.type_keys("^a{BACKSPACE}")  # limpa
+            observacao.type_keys("Texto de teste", with_spaces=True)
+
+        panes = self.window.descendants(control_type="Pane")
+        campo_cfop = panes[4]
+
+        if campo_cfop:
+            valor = campo_cfop.element_info.name
+
+        print(valor)
+
+        campo_selecao_cfop = panes[-1]
+        campo_selecao_cfop.click_input()
+
+        return 'ok'
+
+
+    def clicar_opcoes_incluir(self, pane, acima=False, abaixo=False):
+        rect = pane.rectangle()
+
+        largura = rect.right - rect.left
+        altura = rect.bottom - rect.top
+
+        if acima:
+            x1 = rect.left + int(largura * 0.20)
+            y1 = rect.top + int(altura * 0.50)
+            click(coords=(x1, y1))
+
+        if abaixo:
+            x2 = rect.left + int(largura * 0.70)
+            y2 = rect.top + int(altura * 0.50)
+            click(coords=(x2, y2))
+
+    
+    def clicar_vender(self, pane):
+        rect = pane.rectangle()
+
+        largura = rect.right - rect.left
+        altura = rect.bottom - rect.top
+
+        x = rect.left + int(largura * 0.80)
+        y = rect.top + int(altura * 0.25)
+
+        pane.click_input(coords=(x - rect.left, y - rect.top))
 
     def confirmar(self):
         self.window.child_window(title="Confirmar").click()

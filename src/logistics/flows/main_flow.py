@@ -9,6 +9,7 @@ from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
 from config.settings import LOGISTICS_BASE_URL, DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
+from pywinauto import Desktop, Application
 logger = get_logger(__name__)
 
 
@@ -54,7 +55,10 @@ class NBSMainFlow:
 
             try:
                 search_result = ChassisSearchFlow(window).execute(chassis)
-                #NFEmissionFlow(window).execute()
+                nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
+                app = Application(backend="uia").connect(handle=nova_handle)
+                window = app.window(handle=nova_handle)
+                NFEmissionFlow(window).execute()
 
                 row["logistics_status"] = "success"
                 row["logistics_error"] = ""

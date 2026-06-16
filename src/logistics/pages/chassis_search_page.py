@@ -130,10 +130,10 @@ class ChassisSearchPage:
                 dados_encontrado['descricao_patio'] = self.safe_get(todos, 12)
                 dados_encontrado['user'] = self.safe_get(todos, 13)
                 dados_encontrado['modelo'] = self.safe_get(todos, 14)
-                dados_encontrado['avaliKAPTALIZEacao'] = self.safe_get(todos, 15)
+                dados_encontrado['avaliacao'] = self.safe_get(todos, 15)
                 dados_encontrado['data_validade'] = self.safe_get(todos, 16)
                 dados_encontrado['data_emissao'] = self.safe_get(todos, 17)
-                dados_encontrado['datNBSa_reserva'] = self.safe_get(todos, 18)
+                dados_encontrado['data_reserva'] = self.safe_get(todos, 18)
 
                 logger.info(f"Proposta localizada {dados_encontrado}")
             
@@ -146,7 +146,8 @@ class ChassisSearchPage:
             logger.error(f"Erro na busca por chassis: {e}")
             raise
         finally:
-            self._close_propostas_window()
+            pass
+            #self._close_propostas_window()
 
     def _close_propostas_window(self):
         if not self.propostas_handle:
