@@ -52,10 +52,11 @@ class NFEmissionPage:
         )
 
         if "A nota fiscal será emitida para o cliente" not in mensagem:
-            return mensagem
+            raise Exception(mensagem)
         
         popup.child_window(title="OK", control_type="Button").click_input()
-        sleep(3)
+    
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = ""):
         nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
         app = Application(backend="uia").connect(handle=nova_handle)
         self.window = app.window(handle=nova_handle)
@@ -97,7 +98,7 @@ class NFEmissionPage:
         send_keys("{UP 10}")
         send_keys("{ENTER}")
         send_keys("{UP}")
-        send_keys("Observação da planilha", with_spaces=True)
+        send_keys(ficha_observacao, with_spaces=True)
         send_keys("{ENTER}")
 
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
@@ -119,20 +120,34 @@ class NFEmissionPage:
         if observacao:
             observacao.click_input()
             observacao.type_keys("^a{BACKSPACE}")  # limpa
-            observacao.type_keys("Texto de teste", with_spaces=True)
+            if ficha_observacao:
+                observacao.type_keys(ficha_observacao, with_spaces=True)
 
+
+        # Verificar o valor do CFOP, irá percorrer até encontrar o 5116
         panes = self.window.descendants(control_type="Pane")
         campo_cfop = panes[4]
-
-        if campo_cfop:
-            valor = campo_cfop.element_info.name
-
-        print(valor)
-
+        
         campo_selecao_cfop = panes[-1]
         campo_selecao_cfop.click_input()
+        self.window.set_focus()
+        send_keys("{UP 20}")        
+        
+        # for para mudar cfop obter e verificar se é 5116, caso não seja, clicar no campo de seleção e ir para o próximo cfop
+        for i in range(10):  # Limite de 10 tentativas para evitar loop infinito
+            valor_cfop = campo_cfop.element_info.name
+            if valor_cfop == "5116":
+                break
+            
+            campo_selecao_cfop = self.window.descendants(control_type="Pane")[-1]
+            campo_selecao_cfop.click_input()     
+            self.window.set_focus()
+            send_keys("{DOWN}")
 
-        return 'ok'
+            if i == 9:  # Se chegar na última tentativa e não encontrar o CFOP desejado
+                raise Exception("CFOP 5116 não encontrado após 10 tentativas.")
+        
+        aba_fechamento_observacao.click_input()
 
 
     def clicar_opcoes_incluir(self, pane, acima=False, abaixo=False):

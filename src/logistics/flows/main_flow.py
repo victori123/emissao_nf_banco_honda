@@ -44,6 +44,7 @@ class NBSMainFlow:
         updated_rows = []
         for row in rows:
             chassis = (row.get("veiculo_chassi") or "").strip()
+            ficha_observacao = (row.get("ficha_observacao") or "").strip()
             row["logistics_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             if not chassis:
@@ -58,7 +59,7 @@ class NBSMainFlow:
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
-                NFEmissionFlow(window).execute()
+                NFEmissionFlow(window).execute(ficha_observacao)
 
                 row["logistics_status"] = "success"
                 row["logistics_error"] = ""
