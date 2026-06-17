@@ -44,6 +44,10 @@ class CrmAutoPage(BaseCRMPage):
 
     _CLOSE_DATAILS = (By.XPATH, '//a[contains(@class,"nbs-tfpage-control")]')
 
+    _OBSERVATION_DETAILS = (By.XPATH, '//*[@id="btnObservacao"]/button')
+
+    _CLOSE_OBSERVATION = (By.XPATH, '//*[@id="sm-dialog"]/div/div/div[1]/div[2]/button')
+
     def is_loaded(self) -> bool:
         return self.find(*self._OPEN_MENU)
 
@@ -182,9 +186,12 @@ class CrmAutoPage(BaseCRMPage):
             f"{prop_base}//label[contains(text(),'Assunto')]/preceding::textarea[1]"
         )
 
-        dados["ficha_observacao"] = self._safe_get_text(
-            f"{prop_base}//label[contains(text(),'Observação a ser impressa na Proposta')]/preceding::textarea[1]"
-        )
+        obs_button = self.driver.find_elements(*self._OBSERVATION_DETAILS)
+        obs_button[1].click()
+
+        dados["ficha_observacao"] = self.get_data_table()
+
+        self.click(*self._CLOSE_OBSERVATION)
 
         return dados
 
@@ -236,3 +243,44 @@ class CrmAutoPage(BaseCRMPage):
 
         self.logger.info(f"Extracted {len(resultados)} NF(s) from current page")
         return resultados
+
+    def get_data_table(self):
+    
+        tabela = self.wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="gridPrincipalObservacao"]')
+            )
+        )
+
+        # Cabeçalho 
+        headers = tabela.find_elements(By.CSS_SELECTOR, "thead th")
+
+        nomes_colunas = []
+        for th in headers:
+            if th.get_attribute("hidden"):
+                continue
+
+            titulo = th.text.strip()
+            if titulo:
+                nomes_colunas.append(titulo)
+
+        # Linhas
+        linhas = tabela.find_elements(By.CSS_SELECTOR, "tbody tr")
+
+        dados = []
+
+        for linha in linhas:
+            colunas = linha.find_elements(By.CSS_SELECTOR, "td")
+
+            valores = []
+            for col in colunas:
+                if col.get_attribute("hidden"):
+                    continue
+
+                texto = col.text.strip()
+                valores.append(texto)
+
+            if len(valores) == len(nomes_colunas):
+                dados.append(dict(zip(nomes_colunas, valores)))
+
+        return dados
