@@ -1,3 +1,4 @@
+from typing import Any
 from selenium.webdriver.remote.webdriver import WebDriver
 from src.crm.pages.login_page import LoginPage
 from src.crm.pages.main_page import MainPage
@@ -12,7 +13,7 @@ from datetime import datetime
 logger = get_logger(__name__)
 
 @retry()
-def run(driver: WebDriver) -> list[dict]:
+def run(driver: Any) -> list[dict]:
     logger.info("=== START: extract_nfs_flow ===")
 
     # Step 1 – Login

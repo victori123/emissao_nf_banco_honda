@@ -1,11 +1,12 @@
 from src.shared.browser.driver_factory import create_driver
+from src.shared.browser.driver_session import DriverSession
 from src.crm.flows import extract_nfs_flow
 from src.shared.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 def run_crm_bot() -> None:
-    driver = create_driver()
+    driver = DriverSession(create_driver)
     try:
         extract_nfs_flow.run(driver)
     except Exception as exc:

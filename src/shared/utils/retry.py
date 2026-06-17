@@ -18,6 +18,10 @@ def retry(max_attempts: int = MAX_RETRIES, delay: float = RETRY_DELAY, exception
                     logger.warning(f"[{func.__name__}] Attempt {attempt}/{max_attempts} failed: {exc}")
                     if attempt == max_attempts:
                         raise MaxRetriesExceededException(func.__name__, max_attempts) from exc
+                    driver_candidate = kwargs.get("driver") if "driver" in kwargs else (args[0] if args else None)
+                    if driver_candidate is not None and hasattr(driver_candidate, "restart") and callable(getattr(driver_candidate, "restart")):
+                        logger.info(f"[{func.__name__}] Restarting driver before retry {attempt + 1}")
+                        driver_candidate.restart()
                     time.sleep(delay)
         return wrapper
     return decorator
