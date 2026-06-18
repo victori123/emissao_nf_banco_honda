@@ -51,6 +51,20 @@ class NFEmissionPage:
             if t.window_text()
         )
 
+        if "Atencao, voce esta vendendo Veiculo de outra empresa" in mensagem:
+            popup.child_window(title="OK", control_type="Button").click_input()
+            sleep(2)
+            popup = self.window.child_window(
+                title="Informação",
+                control_type="Window"
+            )
+            wrapper = popup.wrapper_object()
+            mensagem = " ".join(
+                t.window_text()
+                for t in wrapper.descendants(control_type="Text")
+                if t.window_text()
+            ) 
+
         if "A nota fiscal será emitida para o cliente" not in mensagem:
             raise Exception(mensagem)
         
@@ -126,7 +140,7 @@ class NFEmissionPage:
 
         # Verificar o valor do CFOP, irá percorrer até encontrar o 5116
         panes = self.window.descendants(control_type="Pane")
-        campo_cfop = panes[4]
+        campo_cfop = panes[-2]
         
         campo_selecao_cfop = panes[-1]
         campo_selecao_cfop.click_input()
@@ -136,10 +150,10 @@ class NFEmissionPage:
         # for para mudar cfop obter e verificar se é 5116, caso não seja, clicar no campo de seleção e ir para o próximo cfop
         for i in range(10):  # Limite de 10 tentativas para evitar loop infinito
             valor_cfop = campo_cfop.element_info.name
-            if valor_cfop == "5116":
+            if valor_cfop.strip() == "5116":
                 break
             
-            campo_selecao_cfop = self.window.descendants(control_type="Pane")[-1]
+            campo_selecao_cfop = self.window.descendants(control_type="Pane")[-2]
             campo_selecao_cfop.click_input()     
             self.window.set_focus()
             send_keys("{DOWN}")
@@ -148,6 +162,10 @@ class NFEmissionPage:
                 raise Exception("CFOP 5116 não encontrado após 10 tentativas.")
         
         aba_fechamento_observacao.click_input()
+        sleep(1)
+        panes = self.window.descendants(control_type="Pane")
+
+        return
 
 
     def clicar_opcoes_incluir(self, pane, acima=False, abaixo=False):

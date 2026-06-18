@@ -201,8 +201,8 @@ class CrmAutoPage(BaseCRMPage):
     def extract_relevant_observation(self, observacoes: list[dict]) -> str:
         palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]
         for obs in observacoes:
-            texto = obs.get("Observação", "").lower()
-            if any(palavra in texto for palavra in palavras_chave):
+            texto = obs.get("Observação", "")
+            if any(palavra in texto.lower() for palavra in palavras_chave):
                 return texto
         return ""
 
