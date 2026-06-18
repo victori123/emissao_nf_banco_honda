@@ -193,10 +193,24 @@ class CrmAutoPage(BaseCRMPage):
         # Considera apenas a observação mais recente, que tenha as palavras "Pátio", " Trânsito" ou "Emplacamento"
         
         dados["ficha_observacao"] = self.extract_relevant_observation(lista_observacao)
+    
+        #CFOP será fixo porem quando houver a necessidade de alterar será informdo em observação
+        dados['ficha_codigo_cfop'] = self.extract_cfop_from_observacao(lista_observacao)
 
         self.click(*self._CLOSE_OBSERVATION)
 
         return dados
+    
+    def extract_cfop_from_observacao(self, observacoes: list[dict]) -> str:
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            if "CFOP" in texto.upper():
+                # Extrai o código CFOP usando uma expressão regular
+                import re
+                match = re.search(r'CFOP[:\s]*([0-9]+)', texto, re.IGNORECASE)
+                if match:
+                    return match.group(1)
+        return "5405"  # Valor padrão caso CFOP não seja encontrado
     
     def extract_relevant_observation(self, observacoes: list[dict]) -> str:
         palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]

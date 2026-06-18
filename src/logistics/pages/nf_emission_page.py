@@ -70,7 +70,7 @@ class NFEmissionPage:
         
         popup.child_window(title="OK", control_type="Button").click_input()
     
-    def preencher_dados_nota_fiscal(self, ficha_observacao: str = ""):
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = ""):
         nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
         app = Application(backend="uia").connect(handle=nova_handle)
         self.window = app.window(handle=nova_handle)
@@ -150,7 +150,7 @@ class NFEmissionPage:
         # for para mudar cfop obter e verificar se é 5116, caso não seja, clicar no campo de seleção e ir para o próximo cfop
         for i in range(10):  # Limite de 10 tentativas para evitar loop infinito
             valor_cfop = campo_cfop.element_info.name
-            if valor_cfop.strip() == "5116":
+            if valor_cfop.strip() == ficha_codigo_cfop:
                 break
             
             campo_selecao_cfop = self.window.descendants(control_type="Pane")[-2]
@@ -159,7 +159,7 @@ class NFEmissionPage:
             send_keys("{DOWN}")
 
             if i == 9:  # Se chegar na última tentativa e não encontrar o CFOP desejado
-                raise Exception("CFOP 5116 não encontrado após 10 tentativas.")
+                raise Exception(f"CFOP {ficha_codigo_cfop} não encontrado após 10 tentativas.")
         
         aba_fechamento_observacao.click_input()
         sleep(1)
