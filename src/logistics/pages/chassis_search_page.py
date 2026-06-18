@@ -138,16 +138,16 @@ class ChassisSearchPage:
                 logger.info(f"Proposta localizada {dados_encontrado}")
             
             else:
-                logger.info(f"Proposta não localizada")
+                raise Exception("Proposta não localizada para o chassis informado")
 
             return dados_encontrado        
     
         except Exception as e:
-            logger.error(f"Erro na busca por chassis: {e}")
+            self._close_propostas_window()
             raise
-        finally:
-            pass
-            #self._close_propostas_window()
+        # finally:
+        #     pass
+        #     #self._close_propostas_window()
 
     def _close_propostas_window(self):
         if not self.propostas_handle:

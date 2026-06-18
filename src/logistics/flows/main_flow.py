@@ -46,12 +46,12 @@ class NBSMainFlow:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
             ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
-            row["logistics_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             if not chassis:
                 logger.warning(f"Linha sem chassis encontrada em {input_file.name}. Pulando.")
-                row["logistics_status"] = "missing_chassis"
-                row["logistics_error"] = "Chassi não encontrado na linha"
+                row["nbs_status"] = "missing_chassis"
+                row["nbs_error"] = "Chassi não encontrado na linha"
                 updated_rows.append(row)
                 continue
 
@@ -62,17 +62,17 @@ class NBSMainFlow:
                 window = app.window(handle=nova_handle)
                 NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
 
-                row["logistics_status"] = "success"
-                row["logistics_error"] = ""
+                row["nbs_status"] = "success"
+                row["nbs_error"] = ""
                 if isinstance(search_result, dict):
                     for key, value in search_result.items():
-                        row[f"logistics_{key}"] = value
+                        row[f"nbs_{key}"] = value
 
                 logger.info(f"Chassis {chassis} processado com sucesso.")
 
             except Exception as exc:
-                row["logistics_status"] = "failed"
-                row["logistics_error"] = str(exc)[:512]
+                row["nbs_status"] = "failed"
+                row["nbs_error"] = str(exc)[:512]
                 logger.error(f"Erro ao processar chassis {chassis}: {exc}", exc_info=True)
 
             updated_rows.append(row)
