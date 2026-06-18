@@ -221,16 +221,13 @@ class CrmAutoPage(BaseCRMPage):
             numero = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".font-semibold")
             cliente = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".cliente")
             tempo = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, "i.pi-clock + span")
-            email = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".trunk-text")
             produto = self._safe_get_text_element_on_memory(item, By.CSS_SELECTOR, ".vehicle span")
 
             try:
                 info_extra = item.find_elements(By.CSS_SELECTOR, ".w-5 span")
-                ano = info_extra[1].text.strip() if len(info_extra) > 1 else ""
-                chassi = info_extra[2].text.strip() if len(info_extra) > 2 else ""
+                ano = info_extra[2].text.strip() if len(info_extra) > 2 else ""
             except:
                 ano = ""
-                chassi = ""
 
             item.click()
             self.sleep_withou_condition(3)
@@ -245,10 +242,8 @@ class CrmAutoPage(BaseCRMPage):
                 "numero": numero,
                 "cliente": cliente,
                 "tempo": tempo,
-                "email": email,
                 "produto": produto,
                 "ano": ano,
-                "chassi": chassi,
                 **detalhes
             })
 
