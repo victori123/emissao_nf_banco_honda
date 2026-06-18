@@ -189,11 +189,22 @@ class CrmAutoPage(BaseCRMPage):
         obs_button = self.driver.find_elements(*self._OBSERVATION_DETAILS)
         obs_button[1].click()
 
-        dados["ficha_observacao"] = self.get_data_table()
+        lista_observacao = self.get_data_table()
+        # Considera apenas a observação mais recente, que tenha as palavras "Pátio", " Trânsito" ou "Emplacamento"
+        
+        dados["ficha_observacao"] = self.extract_relevant_observation(lista_observacao)
 
         self.click(*self._CLOSE_OBSERVATION)
 
         return dados
+    
+    def extract_relevant_observation(self, observacoes: list[dict]) -> str:
+        palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]
+        for obs in observacoes:
+            texto = obs.get("Observação", "").lower()
+            if any(palavra in texto for palavra in palavras_chave):
+                return texto
+        return ""
 
     def extract_rows(self) -> list[dict]:
         
