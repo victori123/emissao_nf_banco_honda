@@ -3,6 +3,7 @@ from pywinauto import Desktop, Application
 from time import sleep
 from pywinauto.keyboard import send_keys
 from src.shared.utils.logger import get_logger
+from src.shared.exceptions.rpa_exceptions import RPAException
 import pyperclip
 
 logger = get_logger(__name__)
@@ -204,11 +205,47 @@ class NFEmissionPage:
 
         pane.click_input(coords=(x - rect.left, y - rect.top))
 
+    def _capturar_mensagem_popup(self):
+        try:
+            popup = self.window.child_window(title="Informação", control_type="Window")
+            wrapper = popup.wrapper_object()
+            return " ".join(
+                t.window_text().strip()
+                for t in wrapper.descendants(control_type="Text")
+                if t.window_text().strip()
+            )
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _is_success_message(mensagem: str) -> bool:
+        texto = mensagem.strip()
+        return texto.startswith("O.S número:") and texto.endswith("gerada com sucesso.")
+
+    @staticmethod
+    def _tem_erro(mensagem: str) -> bool:
+        texto = mensagem.lower()
+        palavras_erro = (
+            "erro",
+            "falha",
+            "falhou",
+            "não foi possível",
+            "nao foi possivel",
+            "não foi possivel",
+            "não foi",
+            "nao foi",
+            "cancelado",
+            "não autorizado",
+            "nao autorizado"
+        )
+        return any(p in texto for p in palavras_erro)
+
     def confirmar(self):
         panes = self.window.descendants(control_type="Pane")
 
         panes_sorted = sorted(panes, key=lambda p: p.rectangle().top, reverse=True)
 
+        confirmar_pane = None
         for pane in panes_sorted:
             try:
                 rect = pane.rectangle()
@@ -216,9 +253,11 @@ class NFEmissionPage:
                 if rect.width() > 500 and rect.height() < 120:
                     confirmar_pane = pane
                     break
-            except:
+            except Exception:
                 continue
 
+        if confirmar_pane is None:
+            raise RPAException("Painel de confirmação não encontrado")
 
         rect = confirmar_pane.rectangle()
 
@@ -236,23 +275,23 @@ class NFEmissionPage:
         try:
             popup = self.window.child_window(title="Atenção!!!")
             popup.child_window(title="OK", control_type="Button").click_input()
-        except:
+        except Exception:
             pass
 
-        popup = self.window.child_window(
-            title="Informação",
-            control_type="Window"
-        )
-        wrapper = popup.wrapper_object()
-        mensagem = " ".join(
-            t.window_text()
-            for t in wrapper.descendants(control_type="Text")
-            if t.window_text()
-        )
+        mensagem = self._capturar_mensagem_popup()
+        if not mensagem:
+            return ""
 
-        if "" in mensagem:
+        mensagem = " ".join(mensagem.split())
+
+        if self._is_success_message(mensagem):
             return mensagem
-        else:
-            raise Exception(mensagem)
+
+        if self._tem_erro(mensagem):
+            raise RPAException(mensagem)
+
+        raise RPAException(
+            f"Mensagem inesperada após confirmação: {mensagem}"
+        )
 
 

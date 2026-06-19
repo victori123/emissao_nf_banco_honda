@@ -14,10 +14,14 @@ class NFEmissionFlow:
         try:
             self.page.emitir_nf()
             self.page.preencher_dados_nota_fiscal(ficha_observacao, ficha_codigo_cfop)
-            self.page.confirmar()
+            mensagem = self.page.confirmar()
+
+            if mensagem:
+                logger.info("Mensagem de confirmação da NF: %s", mensagem)
 
             logger.info("NF emitida com sucesso")
+            return mensagem
 
-        except Exception as e:
+        except Exception:
             logger.error("Erro na emissão da NF", exc_info=True)
             raise

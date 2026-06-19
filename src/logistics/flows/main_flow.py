@@ -60,10 +60,12 @@ class NBSMainFlow:
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
-                NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
+                confirmacao_mensagem = NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
 
                 row["nbs_status"] = "success"
                 row["nbs_error"] = ""
+                if confirmacao_mensagem:
+                    row["nbs_confirmation_message"] = confirmacao_mensagem
                 if isinstance(search_result, dict):
                     for key, value in search_result.items():
                         row[f"nbs_{key}"] = value
