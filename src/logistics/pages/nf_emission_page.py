@@ -3,6 +3,7 @@ from pywinauto import Desktop, Application
 from time import sleep
 from pywinauto.keyboard import send_keys
 from src.shared.utils.logger import get_logger
+import pyperclip
 
 logger = get_logger(__name__)
 
@@ -71,6 +72,7 @@ class NFEmissionPage:
         popup.child_window(title="OK", control_type="Button").click_input()
     
     def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = ""):
+        sleep(4)
         nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
         app = Application(backend="uia").connect(handle=nova_handle)
         self.window = app.window(handle=nova_handle)
@@ -112,7 +114,9 @@ class NFEmissionPage:
         send_keys("{UP 10}")
         send_keys("{ENTER}")
         send_keys("{UP}")
-        send_keys(ficha_observacao, with_spaces=True)
+        pyperclip.copy(ficha_observacao)  # copia com acentos para o clipboard
+        sleep(1)
+        send_keys("^v") # Ctrl+V
         send_keys("{ENTER}")
 
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
@@ -153,19 +157,23 @@ class NFEmissionPage:
             if valor_cfop.strip() == ficha_codigo_cfop:
                 break
             
-            campo_selecao_cfop = self.window.descendants(control_type="Pane")[-2]
+            campo_selecao_cfop = self.window.descendants(control_type="Pane")[-1]
             campo_selecao_cfop.click_input()     
             self.window.set_focus()
             send_keys("{DOWN}")
+
+            campo_cfop = self.window.descendants(control_type="Pane")[-2]
 
             if i == 9:  # Se chegar na última tentativa e não encontrar o CFOP desejado
                 raise Exception(f"CFOP {ficha_codigo_cfop} não encontrado após 10 tentativas.")
         
         aba_fechamento_observacao.click_input()
         sleep(1)
-        panes = self.window.descendants(control_type="Pane")
+        
+        painel = self.window.child_window(title="Motivo Da Compra", control_type="Pane")
+        campo = painel.child_window(control_type="Edit")
 
-        return
+        campo.set_edit_text("Primeiro Ve¿culo ou Produto de For¿a")
 
 
     def clicar_opcoes_incluir(self, pane, acima=False, abaixo=False):
@@ -197,4 +205,54 @@ class NFEmissionPage:
         pane.click_input(coords=(x - rect.left, y - rect.top))
 
     def confirmar(self):
-        self.window.child_window(title="Confirmar").click()
+        panes = self.window.descendants(control_type="Pane")
+
+        panes_sorted = sorted(panes, key=lambda p: p.rectangle().top, reverse=True)
+
+        for pane in panes_sorted:
+            try:
+                rect = pane.rectangle()
+
+                if rect.width() > 500 and rect.height() < 120:
+                    confirmar_pane = pane
+                    break
+            except:
+                continue
+
+
+        rect = confirmar_pane.rectangle()
+
+        confirmar_pane.click_input(
+            coords=(int(rect.width() * 0.12), int(rect.height() * 0.5))
+        )
+        sleep(3)
+
+        janela = self.window.child_window(title="Imprimir")
+
+        confirmar = janela.child_window(title="Confirmar", control_type="Button")
+        confirmar.click_input()
+
+        sleep(3)
+        try:
+            popup = self.window.child_window(title="Atenção!!!")
+            popup.child_window(title="OK", control_type="Button").click_input()
+        except:
+            pass
+
+        popup = self.window.child_window(
+            title="Informação",
+            control_type="Window"
+        )
+        wrapper = popup.wrapper_object()
+        mensagem = " ".join(
+            t.window_text()
+            for t in wrapper.descendants(control_type="Text")
+            if t.window_text()
+        )
+
+        if "" in mensagem:
+            return mensagem
+        else:
+            raise Exception(mensagem)
+
+
