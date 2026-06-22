@@ -6,19 +6,25 @@ from src.logistics.flows.login_flow import LoginFlow
 from src.logistics.flows.chassis_search_flow import ChassisSearchFlow
 from src.logistics.flows.nf_emission_flow import NFEmissionFlow
 from src.logistics.flows.renave_emission_flow import RenaveEmissionFlow
+from src.logistics.flows.print_nf_flow import PrintNFFlow
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
-from config.settings import LOGISTICS_BASE_URL, DATA_INPUT_DIR, DATA_OUTPUT_DIR
+from config.settings import LOGISTICS_BASE_SERVER, DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
 from pywinauto import Desktop, Application
 logger = get_logger(__name__)
 
 
 class NBSMainFlow:
-    def __init__(self, app_path=LOGISTICS_BASE_URL):
+    def __init__(self, app_path=LOGISTICS_BASE_SERVER):
         self.session = NBSSession(app_path)
 
     def run(self, user, password, server):
+        # keep credentials for flows that run per-row (ex: impressão em outro servidor)
+        self.user = user
+        self.password = password
+        self.server = server
+
         window = self.session.start()
 
         LoginFlow(window).execute(user, password, server)
@@ -63,7 +69,7 @@ class NBSMainFlow:
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
-                confirmacao_mensagem = "Sucesso"#NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
+                confirmacao_mensagem = NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
 
                 row["nbs_status"] = "success"
                 row["nbs_error"] = ""
@@ -75,7 +81,51 @@ class NBSMainFlow:
 
                 logger.info(f"Chassis {chassis} processado com sucesso.")
                 nf_main_page.close_propostas_window()
-                renave.execute(chassis)
+
+                # Executa renave e registra resultado
+                try:
+                    renave_msg = renave.execute(chassis)
+                    row["nbs_renave_message"] = renave_msg or ""
+                    # heurística simples para inferir status a partir da mensagem
+                    texto = (renave_msg or "").lower()
+                    erro_indicadores = (
+                        "erro",
+                        "falha",
+                        "falhou",
+                        "não",
+                        "nao",
+                        "cancelado",
+                        "não autorizado",
+                        "nao autorizado",
+                    )
+                    row["nbs_renave_status"] = "failed" if any(e in texto for e in erro_indicadores) else "success"
+
+                except Exception as exc:
+                    row["nbs_renave_status"] = "failed"
+                    row["nbs_renave_message"] = str(exc)[:512]
+                    logger.warning(f"Erro na emissão do Renave para chassis {chassis}: {exc}")
+
+                # Após execução do renave, iniciar fluxo de impressão da NF (PDF)
+                try:
+                    print_nf_msg = PrintNFFlow(window).execute(chassis)
+                    row["nbs_print_nf_message"] = print_nf_msg or ""
+                    # heurística simples para inferir status a partir da mensagem
+                    texto = (print_nf_msg or "").lower()
+                    erro_indicadores = (
+                        "erro",
+                        "falha",
+                        "falhou",
+                        "não",
+                        "nao",
+                        "cancelado",
+                        "não autorizado",
+                        "nao autorizado",
+                    )
+                    row["nbs_print_nf_status"] = "failed" if any(e in texto for e in erro_indicadores) else "success"
+                except Exception as exc:
+                    row["nbs_print_nf_status"] = "failed"
+                    row["nbs_print_nf_message"] = str(exc)[:512]
+                    logger.warning(f"Falha na impressão da NF para chassis {chassis}: {exc}")
 
 
             except Exception as exc:
