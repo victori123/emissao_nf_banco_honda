@@ -55,8 +55,9 @@ class NBSMainFlow:
                 updated_rows.append(row)
                 continue
 
+            flow = ChassisSearchFlow(window)
             try:
-                search_result = ChassisSearchFlow(window).execute(chassis)
+                search_result = flow.execute(chassis)
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
@@ -71,6 +72,7 @@ class NBSMainFlow:
                         row[f"nbs_{key}"] = value
 
                 logger.info(f"Chassis {chassis} processado com sucesso.")
+                flow.close_propostas_window()
 
             except Exception as exc:
                 row["nbs_status"] = "failed"

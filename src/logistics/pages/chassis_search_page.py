@@ -143,13 +143,13 @@ class ChassisSearchPage:
             return dados_encontrado        
     
         except Exception as e:
-            self._close_propostas_window()
+            self.close_propostas_window()
             raise
         # finally:
         #     pass
-        #     #self._close_propostas_window()
+        #     #self.close_propostas_window()
 
-    def _close_propostas_window(self):
+    def close_propostas_window(self):
         if not self.propostas_handle:
             return
 
@@ -165,3 +165,4 @@ class ChassisSearchPage:
         except Exception as e:
             logger.warning(f"Falha ao fechar janela 'Propostas': {e}", exc_info=True)
             self.window = self.original_window
+            self.propostas_handle = None

@@ -19,3 +19,6 @@ class ChassisSearchFlow:
         except Exception as e:
             logger.error(f"Erro na busca chassis: {chassis}", exc_info=True)
             raise
+
+    def close_propostas_window(self):
+        self.page.close_propostas_window()
