@@ -211,10 +211,10 @@ class NFEmissionPage:
             popup = Desktop(backend="uia").window(title_re=title)
 
             try:
-                popup.wait("visible", timeout=5)
+                popup.wait("visible", timeout=3)
             except:
                 popup = Desktop().window(title_re=title)
-                popup.wait("visible", timeout=5)
+                popup.wait("visible", timeout=3)
 
             wrapper = popup.wrapper_object()
 
@@ -241,7 +241,7 @@ class NFEmissionPage:
     @staticmethod
     def _is_success_message(mensagem: str) -> bool:
         texto = mensagem.strip()
-        return texto.startswith("O.S número:") and texto.endswith("gerada com sucesso.")
+        return texto.startswith("Informação OK O.S número:") and texto.endswith("gerada com sucesso.")
 
     @staticmethod
     def _tem_erro(mensagem: str) -> bool:
@@ -298,7 +298,7 @@ class NFEmissionPage:
         ok_button = janela_informacao_primeira.child_window(title="OK")
         ok_button.click_input()
 
-        if self._is_success_message(mensagem):
+        if self._is_success_message(mensagem_os):
             mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informação*")
             ok_button = janela_informacao_segunda.child_window(title="OK")
             ok_button.click_input()

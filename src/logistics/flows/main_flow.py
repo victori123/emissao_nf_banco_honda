@@ -5,6 +5,7 @@ from src.logistics.components.nbs_session import NBSSession
 from src.logistics.flows.login_flow import LoginFlow
 from src.logistics.flows.chassis_search_flow import ChassisSearchFlow
 from src.logistics.flows.nf_emission_flow import NFEmissionFlow
+from src.logistics.flows.renave_emission_flow import RenaveEmissionFlow
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
 from config.settings import LOGISTICS_BASE_URL, DATA_INPUT_DIR, DATA_OUTPUT_DIR
@@ -55,13 +56,14 @@ class NBSMainFlow:
                 updated_rows.append(row)
                 continue
 
-            flow = ChassisSearchFlow(window)
+            nf_main_page = ChassisSearchFlow(window)
+            renave = RenaveEmissionFlow(window)
             try:
-                search_result = flow.execute(chassis)
+                search_result = nf_main_page.execute(chassis)
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
-                confirmacao_mensagem = NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
+                confirmacao_mensagem = "Sucesso"#NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
 
                 row["nbs_status"] = "success"
                 row["nbs_error"] = ""
@@ -72,7 +74,9 @@ class NBSMainFlow:
                         row[f"nbs_{key}"] = value
 
                 logger.info(f"Chassis {chassis} processado com sucesso.")
-                flow.close_propostas_window()
+                nf_main_page.close_propostas_window()
+                renave.execute(chassis)
+
 
             except Exception as exc:
                 row["nbs_status"] = "failed"
