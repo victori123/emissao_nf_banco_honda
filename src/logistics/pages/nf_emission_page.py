@@ -213,9 +213,9 @@ class NFEmissionPage:
                 t.window_text().strip()
                 for t in wrapper.descendants(control_type="Text")
                 if t.window_text().strip()
-            )
+            ), popup
         except Exception:
-            return ""
+            return "", None
 
     @staticmethod
     def _is_success_message(mensagem: str) -> bool:
@@ -278,20 +278,25 @@ class NFEmissionPage:
         except Exception:
             pass
 
-        mensagem = self._capturar_mensagem_popup()
+        mensagem, popup = self._capturar_mensagem_popup()
+        if popup:
+            popup.child_window(title="OK", control_type="Button").click_input()
         if not mensagem:
             return ""
 
-        mensagem = " ".join(mensagem.split())
+        mensagem_os = " ".join(mensagem.split())
 
         if self._is_success_message(mensagem):
-            return mensagem
+            mensagem, popup = self._capturar_mensagem_popup()
+            if popup:
+                popup.child_window(title="OK", control_type="Button").click_input()
+            return mensagem_os
 
-        if self._tem_erro(mensagem):
-            raise RPAException(mensagem)
+        if self._tem_erro(mensagem_os):
+            raise RPAException(mensagem_os)
 
         raise RPAException(
-            f"Mensagem inesperada após confirmação: {mensagem}"
+            f"Mensagem inesperada após confirmação: {mensagem_os}"
         )
 
 
