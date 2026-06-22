@@ -205,17 +205,38 @@ class NFEmissionPage:
 
         pane.click_input(coords=(x - rect.left, y - rect.top))
 
-    def _capturar_mensagem_popup(self):
+    def _capturar_mensagem_popup(self, title):
         try:
-            popup = self.window.child_window(title="Informação", control_type="Window")
+            sleep(3)
+            popup = Desktop(backend="uia").window(title_re=title)
+
+            try:
+                popup.wait("visible", timeout=5)
+            except:
+                popup = Desktop().window(title_re=title)
+                popup.wait("visible", timeout=5)
+
             wrapper = popup.wrapper_object()
-            return " ".join(
-                t.window_text().strip()
-                for t in wrapper.descendants(control_type="Text")
-                if t.window_text().strip()
-            ), popup
-        except Exception:
+
+            textos = []
+
+            # 1. tenta pegar do próprio popup
+            if popup.window_text().strip():
+                textos.append(popup.window_text().strip())
+
+            # 2. pega todos os descendentes
+            for ctrl in wrapper.descendants():
+                txt = ctrl.window_text().strip()
+                if txt:
+                    textos.append(txt)
+
+            texto = " ".join(textos)
+
+            return texto, popup
+
+        except Exception as e:
             return "", None
+
 
     @staticmethod
     def _is_success_message(mensagem: str) -> bool:
@@ -264,32 +285,23 @@ class NFEmissionPage:
         confirmar_pane.click_input(
             coords=(int(rect.width() * 0.12), int(rect.height() * 0.5))
         )
-        sleep(3)
 
-        janela = self.window.child_window(title="Imprimir")
-
-        confirmar = janela.child_window(title="Confirmar", control_type="Button")
+        mensagem_imprimir, janela_imprimir = self._capturar_mensagem_popup(title=".*Imprimir.*")
+        confirmar = janela_imprimir.child_window(title="Confirmar", control_type="Button")
         confirmar.click_input()
 
-        sleep(3)
-        try:
-            popup = self.window.child_window(title="Atenção!!!")
-            popup.child_window(title="OK", control_type="Button").click_input()
-        except Exception:
-            pass
+        mensagem_atencao, janela_atencao = self._capturar_mensagem_popup(title=".*Atenção.*")
+        ok_button = janela_atencao.child_window(title="OK")
+        ok_button.click_input()
 
-        mensagem, popup = self._capturar_mensagem_popup()
-        if popup:
-            popup.child_window(title="OK", control_type="Button").click_input()
-        if not mensagem:
-            return ""
-
-        mensagem_os = " ".join(mensagem.split())
+        mensagem_os, janela_informacao_primeira = self._capturar_mensagem_popup(title=".*Informação*")
+        ok_button = janela_informacao_primeira.child_window(title="OK")
+        ok_button.click_input()
 
         if self._is_success_message(mensagem):
-            mensagem, popup = self._capturar_mensagem_popup()
-            if popup:
-                popup.child_window(title="OK", control_type="Button").click_input()
+            mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informação*")
+            ok_button = janela_informacao_segunda.child_window(title="OK")
+            ok_button.click_input()
             return mensagem_os
 
         if self._tem_erro(mensagem_os):
@@ -298,5 +310,3 @@ class NFEmissionPage:
         raise RPAException(
             f"Mensagem inesperada após confirmação: {mensagem_os}"
         )
-
-
