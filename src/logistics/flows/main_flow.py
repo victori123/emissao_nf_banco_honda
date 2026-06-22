@@ -16,6 +16,18 @@ logger = get_logger(__name__)
 
 
 class NBSMainFlow:
+    # Indicadores de erro para heurística de status
+    ERRO_INDICADORES = (
+        "erro",
+        "falha",
+        "falhou",
+        "não",
+        "nao",
+        "cancelado",
+        "não autorizado",
+        "nao autorizado",
+    )
+
     def __init__(self, app_path=LOGISTICS_BASE_SERVER):
         self.session = NBSSession(app_path)
 
@@ -83,49 +95,22 @@ class NBSMainFlow:
                 nf_main_page.close_propostas_window()
 
                 # Executa renave e registra resultado
-                try:
-                    renave_msg = renave.execute(chassis)
-                    row["nbs_renave_message"] = renave_msg or ""
-                    # heurística simples para inferir status a partir da mensagem
-                    texto = (renave_msg or "").lower()
-                    erro_indicadores = (
-                        "erro",
-                        "falha",
-                        "falhou",
-                        "não",
-                        "nao",
-                        "cancelado",
-                        "não autorizado",
-                        "nao autorizado",
-                    )
-                    row["nbs_renave_status"] = "failed" if any(e in texto for e in erro_indicadores) else "success"
-
-                except Exception as exc:
-                    row["nbs_renave_status"] = "failed"
-                    row["nbs_renave_message"] = str(exc)[:512]
-                    logger.warning(f"Erro na emissão do Renave para chassis {chassis}: {exc}")
+                self._execute_and_record_flow(
+                    row,
+                    "renave",
+                    lambda: renave.execute(chassis),
+                    chassis,
+                    "Erro na emissão do Renave"
+                )
 
                 # Após execução do renave, iniciar fluxo de impressão da NF (PDF)
-                try:
-                    print_nf_msg = PrintNFFlow(window).execute(chassis)
-                    row["nbs_print_nf_message"] = print_nf_msg or ""
-                    # heurística simples para inferir status a partir da mensagem
-                    texto = (print_nf_msg or "").lower()
-                    erro_indicadores = (
-                        "erro",
-                        "falha",
-                        "falhou",
-                        "não",
-                        "nao",
-                        "cancelado",
-                        "não autorizado",
-                        "nao autorizado",
-                    )
-                    row["nbs_print_nf_status"] = "failed" if any(e in texto for e in erro_indicadores) else "success"
-                except Exception as exc:
-                    row["nbs_print_nf_status"] = "failed"
-                    row["nbs_print_nf_message"] = str(exc)[:512]
-                    logger.warning(f"Falha na impressão da NF para chassis {chassis}: {exc}")
+                self._execute_and_record_flow(
+                    row,
+                    "print_nf",
+                    lambda: PrintNFFlow(window).execute(chassis),
+                    chassis,
+                    "Falha na impressão da NF"
+                )
 
 
             except Exception as exc:
@@ -151,3 +136,14 @@ class NBSMainFlow:
             output_file = DATA_OUTPUT_DIR / f"{output_file.stem}_{datetime.now():%Y%m%d_%H%M%S}{output_file.suffix}"
         input_file.replace(output_file)
         logger.info(f"Arquivo vazio movido para output: {output_file.name}")
+
+    def _execute_and_record_flow(self, row: dict, flow_name: str, callable_fn, chassis: str, logger_msg: str):
+        try:
+            resultado = callable_fn()
+            row[f"nbs_{flow_name}_message"] = resultado or ""
+            texto = (resultado or "").lower()
+            row[f"nbs_{flow_name}_status"] = "failed" if any(e in texto for e in self.ERRO_INDICADORES) else "success"
+        except Exception as exc:
+            row[f"nbs_{flow_name}_status"] = "failed"
+            row[f"nbs_{flow_name}_message"] = str(exc)[:512]
+            logger.warning(f"{logger_msg} para chassis {chassis}: {exc}")
