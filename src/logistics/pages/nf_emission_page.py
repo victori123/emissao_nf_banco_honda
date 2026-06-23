@@ -118,12 +118,15 @@ class NFEmissionPage:
         pyperclip.copy(ficha_observacao)  # copia com acentos para o clipboard
         sleep(1)
         send_keys("^v") # Ctrl+V
-        send_keys("{ENTER}")
+
+        self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
+        
+        send_keys("+{TAB}")
+        send_keys("{DOWN 3}")
 
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
 
         aba_dados_nota_fiscal.click_input()
-        
         observacao = next(
             (
                 e for e in self.window.descendants(control_type="Edit")
@@ -241,7 +244,7 @@ class NFEmissionPage:
     @staticmethod
     def _is_success_message(mensagem: str) -> bool:
         texto = mensagem.strip()
-        return texto.startswith("Informação OK O.S número:") and texto.endswith("gerada com sucesso.")
+        return texto.startswith("Informação OK O.S. número:") and texto.endswith("gerada com sucesso.")
 
     @staticmethod
     def _tem_erro(mensagem: str) -> bool:

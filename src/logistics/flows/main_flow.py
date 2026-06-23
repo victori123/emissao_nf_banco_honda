@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-
+import os
 from src.logistics.components.nbs_session import NBSSession
 from src.logistics.flows.login_flow import LoginFlow
 from src.logistics.flows.chassis_search_flow import ChassisSearchFlow
@@ -65,6 +65,8 @@ class NBSMainFlow:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
             ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
+            file_name = (row.get("cliente") or "").strip() + ".pdf"
+            download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             if not chassis:
@@ -107,10 +109,12 @@ class NBSMainFlow:
                 self._execute_and_record_flow(
                     row,
                     "print_nf",
-                    lambda: PrintNFFlow(window).execute(chassis),
+                    lambda: PrintNFFlow().execute(chassis, download_path),
                     chassis,
                     "Falha na impressão da NF"
                 )
+
+                print('Sucesso')
 
 
             except Exception as exc:

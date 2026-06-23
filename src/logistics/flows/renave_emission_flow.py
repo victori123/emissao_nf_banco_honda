@@ -13,9 +13,8 @@ class RenaveEmissionFlow:
 
         try:
             self.page.clicar_renave()
-            self.page.processar_operacao(chassi)
-            mensagem = self.page.confirmar()
-
+            mensagem = self.page.processar_operacao(chassi)
+            
             if mensagem:
                 logger.info("Mensagem de confirmação de Renave: %s", mensagem)
 
