@@ -70,6 +70,11 @@ class CrmAutoPage(BaseCRMPage):
         self.click(*self._ABA_PROPOSTA)
         self.click(*self._PAINEL_AGUARDANDO_NF)
 
+    def attach_pdf_to_current_opportunity(self, pdf_path: str) -> None:
+        self.logger.info("Attachment step is not implemented yet for path: %s", pdf_path)
+        raise NotImplementedError(
+            "Implemente a ação de upload do PDF na UI do CRM com os seletores reais da tela de oportunidade."
+        )
 
     def _safe_get_text(self, xpath, by=By.XPATH):
         try:

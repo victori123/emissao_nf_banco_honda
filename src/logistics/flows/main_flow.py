@@ -114,8 +114,12 @@ class NBSMainFlow:
                     "Falha na impressão da NF"
                 )
 
-                print('Sucesso')
-
+                if os.path.exists(download_path):
+                    row["nbs_attachment_path"] = str(download_path)
+                    row["nbs_attachment_file_name"] = os.path.basename(download_path)
+                else:
+                    row["nbs_attachment_path"] = ""
+                    row["nbs_attachment_file_name"] = ""
 
             except Exception as exc:
                 row["nbs_status"] = "failed"
