@@ -3,6 +3,7 @@ from src.crm.pages.base_crm_page import BaseCRMPage
 from src.shared.exceptions.rpa_exceptions import DataExtractionException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from config.settings import IMPLICIT_WAIT
 
 class CrmAutoPage(BaseCRMPage):
     """CRM Auto — confirms successful navigation."""
@@ -221,9 +222,19 @@ class CrmAutoPage(BaseCRMPage):
         return ""
 
     def extract_rows(self) -> list[dict]:
-        
-        itens = self.driver.find_elements(*self._TABLE_ROWS)
+        import time
+        end = time.time() + 120
 
+        itens = None
+        while time.time() < end:
+            try:
+                itens = self.driver.find_elements(*self._TABLE_ROWS)
+                if itens:
+                    break
+            except:
+                pass
+            self.sleep_withou_condition(3)
+            
         if not itens:
             raise DataExtractionException("No rows found in NFs table.")
         
