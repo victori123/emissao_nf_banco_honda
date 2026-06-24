@@ -45,8 +45,6 @@ def run(driver) -> list[str]:
     crm_auto_page = CrmAutoPage(driver)
     assert crm_auto_page.is_loaded(), "Crm Auto page did not load"
     crm_auto_page.go_to_crm_autos()
-    crm_auto_page.go_to_funil_vendas()
-    crm_auto_page.search()
 
     attachment_csvs = find_attachment_csvs()
     if not attachment_csvs:
@@ -62,6 +60,8 @@ def run(driver) -> list[str]:
 
         for row in rows:
             pdf_path = row.get("nbs_attachment_path") or row.get("attachment_path")
+            chassi = row.get("veiculo_chassi")
+            numero_evento = row.get("numero")
             if not pdf_path:
                 continue
 
@@ -73,7 +73,7 @@ def run(driver) -> list[str]:
 
             logger.info("Anexando PDF ao CRM: %s", pdf_file.name)
             try:
-                crm_auto_page.attach_pdf_to_current_opportunity(str(pdf_file))
+                crm_auto_page.attach_pdf_to_current_opportunity(str(pdf_file), chassi, numero_evento)
                 update_attachment_result(row, "success")
                 attached_files.append(pdf_file.name)
             except Exception as exc:

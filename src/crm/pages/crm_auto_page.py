@@ -49,6 +49,31 @@ class CrmAutoPage(BaseCRMPage):
 
     _CLOSE_OBSERVATION = (By.XPATH, '//*[@id="sm-dialog"]/div/div/div[1]/div[2]/button')
 
+    _PESQUISAR_EVENTO_LUPA = (By.XPATH, "//span[contains(@class,'pi-search')]")
+    _CHASSI_CHECKBOX_BUTTON = (By.XPATH, '//label[@for="qf-flag-CHASSI_COMPLETO"]')
+    _CHASSI_TEXT_FIELD = (By.XPATH, '//input-search//input[@type="text"]')
+    _PESQUISAR_EVENTO_BUTTON = (By.XPATH, '//button[.//span[contains(@class,"pi-sync")]]')
+
+    _MESA_FI_TAB = (
+        By.XPATH,
+        '//a[@role="tab"][.//span[contains(text(),"Mesa F&I")]]'
+    )
+    
+    _DOCUMENTO_TAB = (
+        By.XPATH,
+        '//a[@role="tab"][.//span[normalize-space()="Documento"]]'
+    )
+        
+    _INCLUIR_BUTTON = (
+        By.XPATH,
+        '//p-button[.//span[normalize-space()="Incluir"]]//button'
+    )
+    
+    _SALVAR_BUTTON = (
+        By.XPATH,
+        '//p-button[@id="btnSalvar"]//button'
+    )
+    
     def is_loaded(self) -> bool:
         return self.find(*self._OPEN_MENU)
 
@@ -70,11 +95,63 @@ class CrmAutoPage(BaseCRMPage):
         self.click(*self._ABA_PROPOSTA)
         self.click(*self._PAINEL_AGUARDANDO_NF)
 
-    def attach_pdf_to_current_opportunity(self, pdf_path: str) -> None:
-        self.logger.info("Attachment step is not implemented yet for path: %s", pdf_path)
-        raise NotImplementedError(
-            "Implemente a ação de upload do PDF na UI do CRM com os seletores reais da tela de oportunidade."
-        )
+    def attach_pdf_to_current_opportunity(self, pdf_path: str, chassi: str, numero_evento: str) -> None:
+        self.logger.info("Attachment step for path: %s", pdf_path)
+        self.click(*self._PESQUISAR_EVENTO_LUPA)
+        self.click(*self._CHASSI_CHECKBOX_BUTTON)
+        self.fill(*self._CHASSI_TEXT_FIELD, chassi)
+        self.click(*self._PESQUISAR_EVENTO_BUTTON)
+
+        self.clicar_evento_grid(numero_evento=numero_evento)
+
+        self.js_click(*self._NEGOCIACAO_DETAILS)
+
+        self.click(*self._MESA_FI_TAB)
+
+        self.click(*self._DOCUMENTO_TAB)
+
+        self.click(*self._INCLUIR_BUTTON)
+
+        
+        dropdown = self.wait.until(EC.element_to_be_clickable((
+                By.XPATH,
+                '//label[normalize-space()="Tipo Documento"]/ancestor::span//div[contains(@class,"p-dropdown")]'
+            )))
+
+        self.driver.execute_script("arguments[0].click();", dropdown)
+
+        # 2. Aguardar opções aparecerem
+        opcao = self.wait.until(EC.element_to_be_clickable((
+            By.XPATH,
+            f'//li[@role="option"]//span[normalize-space()="Nota Fiscal"]'
+        )))
+
+        self.driver.execute_script("arguments[0].click();", opcao)
+        
+        self.enviar_documento(pdf_path)
+
+        self.click(*self._SALVAR_BUTTON)
+        
+        return "Sucesso"
+
+    def enviar_documento(self, caminho_arquivo, timeout=10):
+
+        
+        input_file = self.wait.until(EC.presence_of_element_located((
+                By.ID, "docfile"
+            )))
+
+            # Garante visibilidade para evitar erro
+        self.driver.execute_script("""
+            arguments[0].style.display = 'block';
+            arguments[0].style.visibility = 'visible';
+            arguments[0].style.opacity = 1;
+        """, input_file)
+
+        input_file.send_keys(caminho_arquivo)
+
+        self.logger.info("Arquivo enviado com sucesso.")
+
 
     def _safe_get_text(self, xpath, by=By.XPATH):
         try:
@@ -320,3 +397,43 @@ class CrmAutoPage(BaseCRMPage):
                 dados.append(dict(zip(nomes_colunas, valores)))
 
         return dados
+    
+
+    def clicar_evento_grid(self, numero_evento: str, timeout=10):
+
+        # Aguarda o grid carregar
+        registros = self.wait.until(
+            EC.presence_of_all_elements_located((
+                By.XPATH,
+                '//div[contains(@class,"register-custom-grid")]'
+            ))
+        )
+
+        for registro in registros:
+            try:
+
+                # Captura o número do evento
+                elemento_evento = registro.find_element(
+                    By.XPATH,
+                    './/div[contains(@class,"column-evento")]//span[contains(@class,"lead")]'
+                )
+
+                evento = elemento_evento.text.strip()
+
+                if evento == numero_evento:
+                    # Clica na SEGUNDA COLUNA (container do evento)
+                    coluna_evento = registro.find_element(
+                        By.XPATH,
+                        './/div[contains(@class,"column-evento")]'
+                    )
+                    self.driver.execute_script("arguments[0].scrollIntoView(true);", coluna_evento)
+                    self.driver.execute_script("arguments[0].click();", coluna_evento)
+
+                    self.logger.info(f" Evento {numero_evento} encontrado e clicado.")
+                    return True
+
+            except Exception as e:
+                continue
+
+        self.logger.warning(f"Evento {numero_evento} não encontrado no grid.")
+        return False
