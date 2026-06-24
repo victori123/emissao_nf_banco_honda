@@ -4,6 +4,7 @@ from src.shared.utils.logger import get_logger
 from pywinauto import Desktop
 from pywinauto.keyboard import send_keys
 import pyperclip
+from pywinauto.mouse import click
 
 logger = get_logger(__name__)
 
@@ -94,11 +95,25 @@ class PrintNFPage:
             logger.error("Erro ao tentar fechar aplicação de impressão", exc_info=True)
             raise
 
+    def limpar_filtro(self, pane):
+        rect = pane.rectangle()
+
+        largura = rect.right - rect.left
+        altura = rect.bottom - rect.top
+
+        x1 = rect.left + int(-20)
+        y1 = rect.top + 5
+        click(coords=(x1, y1)) # obtem a posição do campo e clica acima do campo
+        sleep(1)
+
     def search_chassis(self, chassis: str):
         logger.info("Procurando chassi na interface de impressão: %s", chassis)
         try:
             self.window.set_focus()
             panes = self.window.descendants(control_type="Pane")
+            edits = self.window.descendants(control_type="Edit")
+            empresa_field = edits[2]
+            self.limpar_filtro(empresa_field)
             if not panes:
                 raise Exception("Campo de busca não encontrado na interface de impressão")
 
@@ -106,29 +121,8 @@ class PrintNFPage:
             campo_chassi.click_input()
             campo_chassi.type_keys(chassis, with_spaces=True)
 
-            consultar_btn = None
-            imprimir_nf = None
-
-            for pane in self.window.descendants(control_type="Pane"):
-                try:
-                    rect = pane.rectangle()
-
-                    # painel da direita
-                    if (
-                        1500 < rect.left < 1600 and
-                        150 < rect.top < 250
-                    ):
-                        consultar_btn = pane
-                    
-                    if (
-                        600 < rect.left < 700 and
-                        800 < rect.top < 900
-                    ):
-                        imprimir_nf = pane
-
-
-                except:
-                    pass
+            consultar_btn = panes[10]
+            imprimir_nf = panes[7]
 
             if consultar_btn:
 
@@ -152,6 +146,18 @@ class PrintNFPage:
             x_rel = int(width * 0.30)
             y_rel = int(height * 0.40)
             imprimir_nf.click_input(coords=(x_rel, y_rel))
+            mensagem_atencao = None
+            try:
+                mensagem_atencao, janela_atencao = self._capturar_mensagem_popup(title=".*Informação.*")
+                ok_button = janela_atencao.child_window(title="OK")
+                ok_button.click_input()
+            except:
+                pass
+            
+            if mensagem_atencao:
+                raise Exception(mensagem_atencao)
+            
+            logger.info(f"Chassi Encontrado")
             
         except Exception:
             logger.error("Erro ao buscar chassi", exc_info=True)
@@ -189,6 +195,37 @@ class PrintNFPage:
             logger.error("Erro durante navegação/impressão", exc_info=True)
             raise
 
+    def _capturar_mensagem_popup(self, title):
+            try:
+                sleep(3)
+                popup = Desktop(backend="uia").window(title_re=title)
+
+                try:
+                    popup.wait("visible", timeout=3)
+                except:
+                    popup = Desktop().window(title_re=title)
+                    popup.wait("visible", timeout=3)
+
+                wrapper = popup.wrapper_object()
+
+                textos = []
+
+                # 1. tenta pegar do próprio popup
+                if popup.window_text().strip():
+                    textos.append(popup.window_text().strip())
+
+                # 2. pega todos os descendentes
+                for ctrl in wrapper.descendants():
+                    txt = ctrl.window_text().strip()
+                    if txt:
+                        textos.append(txt)
+
+                texto = " ".join(textos)
+
+                return texto, popup
+
+            except Exception as e:
+                return "", None
 
     def _salvar_pdf(self, caminho_completo, timeout=20):
         desktop = Desktop(backend="win32")

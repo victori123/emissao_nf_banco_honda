@@ -113,7 +113,7 @@ class RenaveEmissionPage:
             #verifica se só existe 1 ocorrência do chassi
             ocorrencias = texto.split('\r\n')[1:]
 
-            logger.info(f"Ocorrências do chassi: {ocorrencias}")
+            logger.info(f"Ocorrências do chassi: {len(ocorrencias)}")
 
             return len(ocorrencias) == 1
 
@@ -153,13 +153,26 @@ class RenaveEmissionPage:
         except Exception as e:
             return ""
 
+    def limpar_filtro(self, pane):
+        rect = pane.rectangle()
+
+        largura = rect.right - rect.left
+        altura = rect.bottom - rect.top
+
+        x1 = rect.left + int(largura * 0)
+        y1 = rect.top + int(-15)
+        click(coords=(x1, y1)) # obtem a posição do campo e clica acima do campo
+        sleep(1)
+
+
     def processar_operacao(self, chassis) -> str:
         try:
             logger.info(f"Preenchendo chassi: {chassis}")
 
             self.window.wait("visible", timeout=10)
             edits = self.window.descendants(control_type="Edit")
-
+            empresa_estoque_atual = self.window.descendants(control_type="Pane")[2]
+            situacao = self.window.descendants(control_type="Pane")[3]
             if not edits:
                 raise Exception("Nenhum campo Edit encontrado")
 
@@ -171,6 +184,8 @@ class RenaveEmissionPage:
             campo_chassi.click_input()
             campo_chassi.set_edit_text("")  # limpa
             campo_chassi.type_keys(chassis, with_spaces=True)
+            self.limpar_filtro(empresa_estoque_atual)
+            self.limpar_filtro(situacao)
 
             logger.info("Chassi preenchido")
             botao_pesquisar = self.window.child_window(

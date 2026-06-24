@@ -103,20 +103,7 @@ class ChassisSearchPage:
             logger.info(f"Digitou o chassis: {chassis}")
 
             consultar_btn = None
-
-            for pane in self.window.descendants(control_type="Pane"):
-                try:
-                    rect = pane.rectangle()
-                    # aproximação da posição do botão
-                    if (
-                        1400 < rect.left < 1500 and
-                        700 < rect.top < 800
-                    ):
-                        consultar_btn = pane
-                        break           
-                except:
-                    pass
-
+            consultar_btn = self.window.descendants(control_type="Pane")[-4]
             consultar_btn.click_input()
             logger.info("Clicou em 'Consultar'")
             sleep(3)

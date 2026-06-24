@@ -18,24 +18,7 @@ class NFEmissionPage:
     def emitir_nf(self):
         painel_botoes = None
         all = self.window.descendants()
-        for pane in all:#self.window.descendants(control_type="Pane"):
-
-            try:
-                rect = pane.rectangle()
-                largura = rect.right - rect.left
-                altura = rect.bottom - rect.top
-
-                if (
-                    self.dentro(rect.left, 374, 60) and
-                    self.dentro(rect.top, 803, 60) and
-                    1100 < largura < 1300 and
-                    40 < altura < 80
-                ):
-                    painel_botoes = pane
-                    break
-            except:
-                pass
-
+        painel_botoes = all[0]
 
         if not painel_botoes:
              raise Exception("Botão 'Vender' não encontrado")
@@ -73,10 +56,14 @@ class NFEmissionPage:
         popup.child_window(title="OK", control_type="Button").click_input()
     
     def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = ""):
-        sleep(4)
-        nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
-        app = Application(backend="uia").connect(handle=nova_handle)
-        self.window = app.window(handle=nova_handle)
+        
+        app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
+        dlg = app.window(title_re=".*Venda.*")
+        dlg.wait("visible", timeout=15)
+
+        #nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
+        #app = Application(backend="uia").connect(handle=nova_handle)
+        self.window = dlg
 
         aba_corpo_nota_fiscal = None
         aba_dados_nota_fiscal = None
@@ -96,20 +83,7 @@ class NFEmissionPage:
         
         aba_corpo_nota_fiscal.click_input()
         sleep(2)
-        
-        painel_incluir = next(
-            (
-                p for p in self.window.descendants(control_type="Pane")
-                if (
-                    p.element_info.class_name == "TPanel" and
-                    480 < p.rectangle().left < 520 and
-                    350 < p.rectangle().top < 390 and
-                    800 < (p.rectangle().right - p.rectangle().left) < 1200 and
-                    40 < (p.rectangle().bottom - p.rectangle().top) < 100
-                )
-            ),
-            None
-        )
+        painel_incluir = self.window.descendants(control_type="Pane")[-1]
         self.window.set_focus()
         send_keys("{TAB 3}")
         send_keys("{UP 10}")
@@ -127,17 +101,7 @@ class NFEmissionPage:
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
 
         aba_dados_nota_fiscal.click_input()
-        observacao = next(
-            (
-                e for e in self.window.descendants(control_type="Edit")
-                if (
-                    e.element_info.class_name == "TDBEdit" and
-                    580 < e.rectangle().left < 620 and
-                    380 < e.rectangle().top < 420
-                )
-            ),
-            None
-        )
+        observacao = self.window.descendants(control_type="Edit")[-1]
         
         if observacao:
             observacao.click_input()
@@ -266,19 +230,7 @@ class NFEmissionPage:
 
     def confirmar(self):
         panes = self.window.descendants(control_type="Pane")
-
-        panes_sorted = sorted(panes, key=lambda p: p.rectangle().top, reverse=True)
-
-        confirmar_pane = None
-        for pane in panes_sorted:
-            try:
-                rect = pane.rectangle()
-
-                if rect.width() > 500 and rect.height() < 120:
-                    confirmar_pane = pane
-                    break
-            except Exception:
-                continue
+        confirmar_pane = panes[-1]
 
         if confirmar_pane is None:
             raise RPAException("Painel de confirmação não encontrado")
@@ -289,22 +241,26 @@ class NFEmissionPage:
             coords=(int(rect.width() * 0.12), int(rect.height() * 0.5))
         )
 
-        mensagem_imprimir, janela_imprimir = self._capturar_mensagem_popup(title=".*Imprimir.*")
+        mensagem_imprimir, janela_imprimir = self._capturar_mensagem_popup(title=".*Imprimir.*")       
         confirmar = janela_imprimir.child_window(title="Confirmar", control_type="Button")
         confirmar.click_input()
+        logger.info(f"Clickou em confirmar na janela de impressão com a msg {mensagem_imprimir}")
 
         mensagem_atencao, janela_atencao = self._capturar_mensagem_popup(title=".*Atenção.*")
         ok_button = janela_atencao.child_window(title="OK")
         ok_button.click_input()
+        logger.info(f"Clickou em OK na janela de Alerta com a msg {mensagem_atencao}")
 
         mensagem_os, janela_informacao_primeira = self._capturar_mensagem_popup(title=".*Informação*")
         ok_button = janela_informacao_primeira.child_window(title="OK")
         ok_button.click_input()
+        logger.info(f"Clickou em OK na primeira janela de Informação com a msg {mensagem_atencao}")
 
         if self._is_success_message(mensagem_os):
             mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informação*")
-            ok_button = janela_informacao_segunda.child_window(title="OK")
+            ok_button = janela_informacao_segunda.child_window(title="Ok")
             ok_button.click_input()
+            logger.info(f"Clickou em OK na segunda janela de Informação com a msg {mensagem}")
             return mensagem_os
 
         if self._tem_erro(mensagem_os):
