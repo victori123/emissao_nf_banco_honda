@@ -65,6 +65,9 @@ class NBSMainFlow:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
             ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
+            observacao_nbs = (row.get("observacao_nbs") or "").strip()
+            complemento_nbs = (row.get("complemento_nbs") or "").strip()
+            veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
             file_name = (row.get("cliente") or "").strip() + ".pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -83,7 +86,12 @@ class NBSMainFlow:
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 window = app.window(handle=nova_handle)
-                confirmacao_mensagem = NFEmissionFlow(window).execute(ficha_observacao, ficha_codigo_cfop)
+                confirmacao_mensagem = NFEmissionFlow(window).execute(
+                    ficha_observacao, 
+                    ficha_codigo_cfop, 
+                    observacao_nbs, 
+                    complemento_nbs,
+                    veiculo_seminovo)
 
                 row["nbs_status"] = "success"
                 row["nbs_error"] = ""

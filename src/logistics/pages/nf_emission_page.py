@@ -55,7 +55,7 @@ class NFEmissionPage:
         
         popup.child_window(title="OK", control_type="Button").click_input()
     
-    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = ""):
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = ""):
         
         app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
         dlg = app.window(title_re=".*Venda.*")
@@ -87,27 +87,34 @@ class NFEmissionPage:
         self.window.set_focus()
         send_keys("{TAB 3}")
         send_keys("{UP 10}")
-        send_keys("{ENTER}")
-        send_keys("{UP}")
-        pyperclip.copy(ficha_observacao)  # copia com acentos para o clipboard
-        sleep(1)
-        send_keys("^v") # Ctrl+V
+        
+        if complemento_nbs:
+            
+            send_keys("{ENTER}")
+            send_keys("{UP}")
+            pyperclip.copy(complemento_nbs)  # copia com acentos para o clipboard
+            sleep(1)
+            send_keys("^v") # Ctrl+V
 
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
-        
+
         send_keys("+{TAB}")
-        send_keys("{DOWN 3}")
+        if veiculo_seminovo:
+            # Opcao CONFORME DETERMINAM ARTS.120, 123, PARAGRAFO PRIMEIRO  E 134, TODOS DO CODIGO DE TRANSITO BRASILEIRO, O PRAZO PARA TRANSFERENCIA  DE 30 DIAS DA AQUISICAO DO VEICULO .
+            send_keys("{DOWN 4}")
+        else:
+            # Opcao CONFORME DETERMINAM ARTS.120 E 123, PARAGRAFO PRIMEIRO AMBOS DO CODIGO DE TRANSITO BRASILEIRO, OPRAZO PARA EMPLACAMENTO DE 30 DIAS A CONTAR DA EMISSAO DA NFE SOB PENA DE PERDER A ISENCAO DO IPVA
+            send_keys("{DOWN 3}")
 
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
 
         aba_dados_nota_fiscal.click_input()
         observacao = self.window.descendants(control_type="Edit")[-1]
-        
-        if observacao:
+        if observacao_nbs:
             observacao.click_input()
             observacao.type_keys("^a{BACKSPACE}")  # limpa
             if ficha_observacao:
-                observacao.type_keys(ficha_observacao, with_spaces=True)
+                observacao.type_keys(observacao_nbs, with_spaces=True)
 
 
         # Verificar o valor do CFOP, irá percorrer até encontrar o 5116
@@ -119,7 +126,6 @@ class NFEmissionPage:
         self.window.set_focus()
         send_keys("{UP 20}")        
         
-        # for para mudar cfop obter e verificar se é 5116, caso não seja, clicar no campo de seleção e ir para o próximo cfop
         for i in range(10):  # Limite de 10 tentativas para evitar loop infinito
             valor_cfop = campo_cfop.element_info.name
             if valor_cfop.strip() == ficha_codigo_cfop:
@@ -135,6 +141,15 @@ class NFEmissionPage:
             if i == 9:  # Se chegar na última tentativa e não encontrar o CFOP desejado
                 raise Exception(f"CFOP {ficha_codigo_cfop} não encontrado após 10 tentativas.")
         
+        
+        chk = self.window.descendants(control_type="CheckBox")[0]
+
+        estado = chk.get_toggle_state()
+
+        if estado == 1:
+            logger.info("Estava marcado para Local de Entrega Diferente do Endereço")
+            chk.toggle()
+    
         aba_fechamento_observacao.click_input()
         sleep(1)
         

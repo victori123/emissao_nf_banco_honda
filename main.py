@@ -40,10 +40,11 @@ def main():
     try:
         if args.bot in ("crm", "all"):
             run_crm()
-        if args.bot == "crm-attach":
-            run_crm_attach()
         if args.bot in ("logistics", "all"):
             run_logistics()
+        if args.bot in ("crm-attach", "all"):
+            run_crm_attach()
+        
     except Exception as exc:
         logger.exception(f"Fatal error: {exc}")
         sys.exit(1)

@@ -29,6 +29,8 @@ class CrmAutoPage(BaseCRMPage):
 
     _TABLE_ROWS = (By.XPATH, "//*[@id='gbAguardaEmissaoNotaFiscal']//div[contains(@class,'lista-dados')]")
 
+    _DIALOG_NEGOCIACAO = (By.XPATH, "/html/body/app-root/frm-tela-main/div[1]/nbs-topo/p-confirmdialog[1]/div/div/div[3]/button[1]/span[2]")
+
     _VEICULOS_DETAILS = (By.XPATH, 
         "//label[normalize-space()='VEÍCULO']"
         "/ancestor::div[contains(@class,'p-panel-header')]"
@@ -169,6 +171,9 @@ class CrmAutoPage(BaseCRMPage):
     def extrair_dados_ficha(self)-> dict[any]:
         dados = {}
         #expand details
+        if self.is_visible(*self._DIALOG_NEGOCIACAO):
+            self.click(*self._DIALOG_NEGOCIACAO)
+
         try:
             self.find_clickable(*self._VEICULOS_DETAILS)
             self.js_click(*self._VEICULOS_DETAILS)
@@ -279,6 +284,10 @@ class CrmAutoPage(BaseCRMPage):
     
         #CFOP será fixo porem quando houver a necessidade de alterar será informdo em observação
         dados['ficha_codigo_cfop'] = self.extract_cfop_from_observacao(lista_observacao)
+        dados['veiculo_siminovo'] =  self.check_semi_novo_from_observacao(lista_observacao)
+        dados['renvam_informado'] = self.extract_renavan_from_observacao(lista_observacao)
+        dados['observacao_nbs'] = self.extract_obs_nbs_from_observacao(lista_observacao)
+        dados['complemento_nbs'] = self.extract_complemento_nbs_from_observacao(lista_observacao)
 
         self.click(*self._CLOSE_OBSERVATION)
 
@@ -295,6 +304,46 @@ class CrmAutoPage(BaseCRMPage):
                     return match.group(1)
         return "5405"  # Valor padrão caso CFOP não seja encontrado
     
+    def extract_renavan_from_observacao(self, observacoes: list[dict]) -> str:
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            if "RENAVAN" in texto.upper():
+                # Extrai o código RENAVAN usando uma expressão regular
+                import re
+                match = re.search(r'RENAVAN[\s]*([0-9]+)', texto, re.IGNORECASE)
+                if match:
+                    return str(match.group(1))
+        return ""
+    
+    def extract_obs_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            if "OBS" in texto.upper():
+                # Extrai o código OBS: usando uma expressão regular
+                import re
+                match = re.search(r'OBS[:\s]*([0-9]+)', texto, re.IGNORECASE)
+                if match:
+                    return str(match.group(1))
+        return ""
+    
+    def extract_complemento_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            if "COMPL" in texto.upper():
+                # Extrai o código COMPL: usando uma expressão regular
+                import re
+                match = re.search(r'COMPL[:\s]*([0-9]+)', texto, re.IGNORECASE)
+                if match:
+                    return str(match.group(1))
+        return ""
+    
+    def check_semi_novo_from_observacao(self, observacoes: list[dict]) -> str:
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            if "SEMINOVA" in texto.upper() or "SEMINOVO" in texto.upper():
+                return True
+        return False
+    
     def extract_relevant_observation(self, observacoes: list[dict]) -> str:
         palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]
         for obs in observacoes:
@@ -305,7 +354,7 @@ class CrmAutoPage(BaseCRMPage):
 
     def extract_rows(self) -> list[dict]:
         import time
-        end = time.time() + 120
+        end = time.time() + 60
 
         itens = None
         while time.time() < end:
