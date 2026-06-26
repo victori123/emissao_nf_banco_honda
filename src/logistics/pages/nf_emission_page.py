@@ -5,6 +5,7 @@ from pywinauto.keyboard import send_keys
 from src.shared.utils.logger import get_logger
 from src.shared.exceptions.rpa_exceptions import RPAException
 import pyperclip
+import re
 
 logger = get_logger(__name__)
 
@@ -55,7 +56,7 @@ class NFEmissionPage:
         
         popup.child_window(title="OK", control_type="Button").click_input()
     
-    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = ""):
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
         
         app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
         dlg = app.window(title_re=".*Venda.*")
@@ -85,8 +86,23 @@ class NFEmissionPage:
         sleep(2)
         painel_incluir = self.window.descendants(control_type="Pane")[-1]
         self.window.set_focus()
-        send_keys("{TAB 3}")
-        send_keys("{UP 10}")
+        if veiculo_seminovo:
+            send_keys("{TAB}")
+            
+            send_keys("^a")  # CTRL + A
+            send_keys("^c")  # CTRL + C
+
+            texto = pyperclip.paste()
+            novo_texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
+
+            pyperclip.copy(novo_texto)  # copia com acentos para o clipboard
+            sleep(1)
+            send_keys("^v") # Ctrl+V
+            send_keys("{TAB 2}")
+            
+        else:
+            send_keys("{TAB 3}")
+            send_keys("{UP 10}")
         
         if complemento_nbs:
             

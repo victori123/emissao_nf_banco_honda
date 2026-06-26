@@ -7,13 +7,13 @@ class NFEmissionFlow:
     def __init__(self, window):
         self.page = NFEmissionPage(window)
 
-    def execute(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = ""):
+    def execute(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
 
         logger.info("Iniciando emissão de NF")
 
         try:
             self.page.emitir_nf()
-            self.page.preencher_dados_nota_fiscal(ficha_observacao, ficha_codigo_cfop, observacao_nbs, complemento_nbs, veiculo_seminovo)
+            self.page.preencher_dados_nota_fiscal(ficha_observacao, ficha_codigo_cfop, observacao_nbs, complemento_nbs, veiculo_seminovo, renavan)
             mensagem = self.page.confirmar()
 
             if mensagem:

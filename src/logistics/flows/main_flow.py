@@ -68,6 +68,7 @@ class NBSMainFlow:
             observacao_nbs = (row.get("observacao_nbs") or "").strip()
             complemento_nbs = (row.get("complemento_nbs") or "").strip()
             veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
+            novo_renavan = (row.get("renvam_informado") or "").strip()
             file_name = (row.get("cliente") or "").strip() + ".pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -91,7 +92,8 @@ class NBSMainFlow:
                     ficha_codigo_cfop, 
                     observacao_nbs, 
                     complemento_nbs,
-                    veiculo_seminovo)
+                    veiculo_seminovo,
+                    novo_renavan)
 
                 row["nbs_status"] = "success"
                 row["nbs_error"] = ""
