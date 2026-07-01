@@ -56,6 +56,8 @@ class CrmAutoPage(BaseCRMPage):
     _CHASSI_CHECKBOX_BUTTON = (By.XPATH, '//label[@for="qf-flag-CHASSI_COMPLETO"]')
     _CHASSI_TEXT_FIELD = (By.XPATH, '//input-search//input[@type="text"]')
     _PESQUISAR_EVENTO_BUTTON = (By.XPATH, '//button[.//span[contains(@class,"pi-sync")]]')
+    
+    _CLEAR_BUTTON = (By.XPATH, "//i[contains(@class, 'p-dropdown-clear-icon') and contains(@class, 'pi-times')]")
 
     _MESA_FI_TAB = (
         By.XPATH,
@@ -101,6 +103,7 @@ class CrmAutoPage(BaseCRMPage):
     def attach_pdf_to_current_opportunity(self, pdf_path: str, chassi: str, numero_evento: str) -> None:
         self.logger.info("Attachment step for path: %s", pdf_path)
         self.click(*self._PESQUISAR_EVENTO_LUPA)
+        self.click(*self._CLEAR_BUTTON)
         self.click(*self._CHASSI_CHECKBOX_BUTTON)
         self.fill(*self._CHASSI_TEXT_FIELD, chassi)
         self.click(*self._PESQUISAR_EVENTO_BUTTON)
@@ -136,6 +139,16 @@ class CrmAutoPage(BaseCRMPage):
         self.click(*self._SALVAR_BUTTON)
         
         return "Sucesso"
+    
+    def close_opened_tabs_after_attachment(self) -> None:
+        # precisa clicar em <a class="nbs-icon-tab nbs-tfpage-control ng-star-inserted"><i class="pi pi-times"></i></a> e <a class="nbs-icon-tab nbs-tfpage-control ng-star-inserted"><i class="pi pi-times"></i></a>
+        tabs = self.driver.find_elements(By.XPATH, '//a[contains(@class,"nbs-icon-tab") and contains(@class,"nbs-tfpage-control")]')
+        for tab in tabs:
+            try:
+                self.driver.execute_script("arguments[0].click();", tab)
+                self.sleep_withou_condition(1)
+            except Exception as e:
+                self.logger.warning(f"Failed to close tab: {e}")
 
     def enviar_documento(self, caminho_arquivo, timeout=10):
 

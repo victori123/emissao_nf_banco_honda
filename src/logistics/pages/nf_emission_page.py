@@ -1,6 +1,6 @@
 from pywinauto.mouse import click
 from pywinauto import Desktop, Application
-from time import sleep
+from time import sleep, time
 from pywinauto.keyboard import send_keys
 from src.shared.utils.logger import get_logger
 from src.shared.exceptions.rpa_exceptions import RPAException
@@ -206,13 +206,24 @@ class NFEmissionPage:
     def _capturar_mensagem_popup(self, title):
         try:
             sleep(3)
-            popup = Desktop(backend="uia").window(title_re=title)
+            deadline = time.time() + 180
+            popup = None
 
-            try:
-                popup.wait("visible", timeout=3)
-            except:
-                popup = Desktop().window(title_re=title)
-                popup.wait("visible", timeout=3)
+            while time.time() < deadline:
+                try:
+                    popup = Desktop(backend="uia").window(title_re=title)
+                    popup.wait("visible", timeout=3)
+                    break
+                except Exception:
+                    try:
+                        popup = Desktop().window(title_re=title)
+                        popup.wait("visible", timeout=3)
+                        break
+                    except Exception:
+                        sleep(3)
+
+            if popup is None:
+                return "", None
 
             wrapper = popup.wrapper_object()
 

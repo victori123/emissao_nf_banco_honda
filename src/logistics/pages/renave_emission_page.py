@@ -13,6 +13,14 @@ class RenaveEmissionPage:
     def __init__(self, window):
         self.window = window
 
+    def close(self):
+        try:
+            if self.window is not None:
+                self.window.close()
+                logger.info("Tela 'Renave' fechada com sucesso")
+        except Exception as e:
+            logger.warning(f"Falha ao fechar a tela 'Renave': {e}")
+
     def clicar_renave(self):
 
         try:
@@ -225,21 +233,32 @@ class RenaveEmissionPage:
                 {'Operação': 'Saída Venda', 'Status': 'Pendente'}
             ]
 
-            if not all(
+            if not any(
                 any(item['Operação'] == v['Operação'] and item['Status'] == v['Status'] for item in dados_encontrados)
                 for v in dados_esperado
             ):
-                raise Exception(f'Entrada Estoque e/ou Saída Venda não localizados ou não estão com Status Pendente {dados_encontrados}')
-
+                raise Exception(f'Nenhuma das operações esperadas foi localizada com Status Pendente: {dados_encontrados}')
 
             botao_operacao_selecionada = self.window.child_window(
                 title="Processar Operação selecionada",
                 found_index=0
             )
-            logger.info("Clicando em operação selecionada")
-            botao_operacao_selecionada.click_input()
 
-            mensagem_erro = self._capturar_mensagem_popup_erro(title=".*Informação*")
+            mensagem_erro = ""
+            for tentativa in range(3):
+                try:
+                    logger.info(f"Clicando em operação selecionada (tentativa {tentativa + 1}/3)")
+                    botao_operacao_selecionada.click_input()
+                    mensagem_erro = self._capturar_mensagem_popup_erro(title=".*Informação*")
+                    if not mensagem_erro:
+                        break
+                    logger.warning(f"Erro identificado na tentativa {tentativa + 1}/3: {mensagem_erro}. Tentando novamente...")
+                except Exception as e:
+                    logger.warning(f"Falha no clique da operação selecionada na tentativa {tentativa + 1}/3: {e}. Tentando novamente...")
+
+                if tentativa < 2:
+                    sleep(1)
+
             if mensagem_erro:
                 raise Exception(mensagem_erro)
             

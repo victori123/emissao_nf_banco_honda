@@ -74,6 +74,7 @@ def run(driver) -> list[str]:
             logger.info("Anexando PDF ao CRM: %s", pdf_file.name)
             try:
                 crm_auto_page.attach_pdf_to_current_opportunity(str(pdf_file), chassi, numero_evento)
+                crm_auto_page.close_opened_tabs_after_attachment()
                 update_attachment_result(row, "success")
                 attached_files.append(pdf_file.name)
             except Exception as exc:
