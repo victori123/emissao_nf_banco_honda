@@ -1,3 +1,4 @@
+import re
 from selenium.webdriver.common.by import By
 from src.crm.pages.base_crm_page import BaseCRMPage
 from src.shared.exceptions.rpa_exceptions import DataExtractionException
@@ -298,7 +299,6 @@ class CrmAutoPage(BaseCRMPage):
             texto = obs.get("Observação", "")
             if "CFOP" in texto.upper():
                 # Extrai o código CFOP usando uma expressão regular
-                import re
                 match = re.search(r'CFOP[:\s]*([0-9]+)', texto, re.IGNORECASE)
                 if match:
                     return match.group(1)
@@ -309,22 +309,28 @@ class CrmAutoPage(BaseCRMPage):
             texto = obs.get("Observação", "")
             if "RENAVAN" in texto.upper():
                 # Extrai o código RENAVAN usando uma expressão regular
-                import re
                 match = re.search(r'RENAVAN[\s]*([0-9]+)', texto, re.IGNORECASE)
                 if match:
                     return str(match.group(1))
         return ""
     
+
     def extract_obs_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+
         for obs in observacoes:
             texto = obs.get("Observação", "")
-            if "OBS" in texto.upper():
-                # Extrai o código OBS: usando uma expressão regular
-                import re
-                match = re.search(r'OBS[:\s]*([0-9]+)', texto, re.IGNORECASE)
-                if match:
-                    return str(match.group(1))
+
+            match = re.search(
+                r'(?:OBSERVA(?:ÇÃO|CAO)|OBS)\s*:\s*(.+)',
+                texto,
+                re.IGNORECASE
+            )
+
+            if match:
+                return match.group(1).strip()
+
         return ""
+
     
     def extract_complemento_nbs_from_observacao(self, observacoes: list[dict]) -> str:
         for obs in observacoes:
@@ -342,7 +348,7 @@ class CrmAutoPage(BaseCRMPage):
             texto = obs.get("Observação", "")
             if "SEMINOVA" in texto.upper() or "SEMINOVO" in texto.upper():
                 return True
-        return False
+        return ''
     
     def extract_relevant_observation(self, observacoes: list[dict]) -> str:
         palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]

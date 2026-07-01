@@ -7,12 +7,15 @@ logger = get_logger("main")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="RPA Runner")
+    
     parser.add_argument(
         "--bot",
+        nargs="+",
         choices=["crm", "logistics", "all", "crm-attach"],
-        default="crm",
-        help="Which bot to run (default: crm)",
+        default=["crm"],
+        help="Which bot(s) to run",
     )
+
     return parser
 
 
@@ -38,12 +41,16 @@ def main():
 
     logger.info(f"Starting RPA — bot: {args.bot}")
     try:
-        if args.bot in ("crm", "all"):
+
+        if "all" in args.bot or "crm" in args.bot:
             run_crm()
-        if args.bot in ("logistics", "all"):
+
+        if "all" in args.bot or "logistics" in args.bot:
             run_logistics()
-        if args.bot in ("crm-attach", "all"):
+
+        if "all" in args.bot or "crm-attach" in args.bot:
             run_crm_attach()
+
         
     except Exception as exc:
         logger.exception(f"Fatal error: {exc}")
