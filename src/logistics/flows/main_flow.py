@@ -51,6 +51,21 @@ class NBSMainFlow:
         for input_file in input_files:
             self._process_csv_file(input_file, window)
 
+    @staticmethod
+    def _is_missing_or_emitted_nf_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        has_chassis_reference = "chassi" in message
+        has_missing_terms = (
+            "não encontrado" in message
+            or "nao encontrado" in message
+            or "não localizado" in message
+            or "nao localizado" in message
+            or "já emitida" in message
+            or "ja emitida" in message
+            or "not found" in message
+        )
+        return has_chassis_reference and has_missing_terms
+
     def _process_csv_file(self, input_file: Path, window):
         logger.info(f"Processando arquivo de input: {input_file.name}")
 
@@ -83,28 +98,55 @@ class NBSMainFlow:
             nf_main_page = ChassisSearchFlow(window)
             renave = RenaveEmissionFlow(window)
             try:
-                search_result = nf_main_page.execute(chassis)
-                nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
-                app = Application(backend="uia").connect(handle=nova_handle)
-                window = app.window(handle=nova_handle)
-                confirmacao_mensagem = NFEmissionFlow(window).execute(
-                    ficha_observacao, 
-                    ficha_codigo_cfop, 
-                    observacao_nbs, 
-                    complemento_nbs,
-                    veiculo_seminovo,
-                    novo_renavan)
+                search_result = None
+                skip_nf_emission = False
 
-                row["nbs_status"] = "success"
-                row["nbs_error"] = ""
-                if confirmacao_mensagem:
-                    row["nbs_confirmation_message"] = confirmacao_mensagem
-                if isinstance(search_result, dict):
-                    for key, value in search_result.items():
-                        row[f"nbs_{key}"] = value
+                try:
+                    search_result = nf_main_page.execute(chassis)
+                except Exception as exc:
+                    if self._is_missing_or_emitted_nf_error(exc):
+                        skip_nf_emission = True
+                        row["nbs_status"] = "skipped_nf_emission"
+                        row["nbs_error"] = "NF já emitida ou chassi não localizado na tela de propostas"
+                        logger.info(f"Pulando emissão de NF para chassis {chassis}: {exc}")
+                    else:
+                        raise
 
-                logger.info(f"Chassis {chassis} processado com sucesso.")
-                nf_main_page.close_propostas_window()
+                if not skip_nf_emission:
+                    try:
+                        nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
+                        app = Application(backend="uia").connect(handle=nova_handle)
+                        window = app.window(handle=nova_handle)
+                        confirmacao_mensagem = NFEmissionFlow(window).execute(
+                            ficha_observacao,
+                            ficha_codigo_cfop,
+                            observacao_nbs,
+                            complemento_nbs,
+                            veiculo_seminovo,
+                            novo_renavan)
+
+                        row["nbs_status"] = "success"
+                        row["nbs_error"] = ""
+                        if confirmacao_mensagem:
+                            row["nbs_confirmation_message"] = confirmacao_mensagem
+                        if isinstance(search_result, dict):
+                            for key, value in search_result.items():
+                                row[f"nbs_{key}"] = value
+
+                        logger.info(f"Chassis {chassis} processado com sucesso.")
+                    except Exception as exc:
+                        if self._is_missing_or_emitted_nf_error(exc):
+                            skip_nf_emission = True
+                            row["nbs_status"] = "skipped_nf_emission"
+                            row["nbs_error"] = "NF já emitida ou chassi não localizado na tela de propostas"
+                            logger.info(f"Pulando emissão de NF para chassis {chassis}: {exc}")
+                        else:
+                            raise
+
+                try:
+                    nf_main_page.close_propostas_window()
+                except Exception:
+                    pass
 
                 # Executa renave e registra resultado
                 self._execute_and_record_flow(
