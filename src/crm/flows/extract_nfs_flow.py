@@ -3,11 +3,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.crm.pages.login_page import LoginPage
 from src.crm.pages.main_page import MainPage
 from src.crm.pages.crm_auto_page import CrmAutoPage
-from src.shared.utils.file_handler import save_csv
+from src.shared.utils.file_handler import move_pending_files_to_output_dir, save_csv
 from src.shared.utils.logger import get_logger
 from src.shared.utils.retry import retry
 from config.credentials import CRMCredentials
-from config.settings import DATA_INPUT_DIR
+from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 from datetime import datetime
 
 logger = get_logger(__name__)
@@ -15,6 +15,10 @@ logger = get_logger(__name__)
 @retry()
 def run(driver: Any) -> list[dict]:
     logger.info("=== START: extract_nfs_flow ===")
+
+    pending_files = move_pending_files_to_output_dir(DATA_INPUT_DIR, DATA_OUTPUT_DIR)
+    if pending_files:
+        logger.info("Arquivos pendentes movidos para %s: %s", DATA_OUTPUT_DIR / "nao_processado", ", ".join(str(path.name) for path in pending_files))
 
     # Step 1 – Login
     LoginPage(driver).open().login(CRMCredentials.USERNAME, CRMCredentials.PASSWORD)
