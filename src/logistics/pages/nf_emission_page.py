@@ -56,7 +56,57 @@ class NFEmissionPage:
         
         popup.child_window(title="OK", control_type="Button").click_input()
     
-    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", complemento_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
+    def reduzir_texto(self, texto: str, limite: int = 500) -> str:
+        if not texto:
+            return ""
+
+        texto = str(texto)
+
+        # Já está dentro do limite
+        if len(texto) <= limite:
+            return texto
+
+        abreviacoes = {
+            "VEICULO": "VEIC",
+            "ALIENACAO": "ALIE.",
+            "GASOLINA": "GAS",
+            "TRIBUTARIA": "TRIB",
+            "OPERACAO": "OPER",
+            "SEM RESERVA": "S/ RES",
+            "FINDUCIARIA": "FIND",
+            "ADMINISTRADORA": "ADM",
+            "PROCEDENCIA": "PROCE",
+            " : ": ":",
+            ": ": ":",
+            " :": ":",
+            " - ": "-"
+        }
+
+        texto_abreviado = texto
+
+        for original, abreviado in abreviacoes.items():
+            texto_abreviado = re.sub(
+                rf"\b{re.escape(original)}\b",
+                abreviado,
+                texto_abreviado,
+                flags=re.IGNORECASE
+            )
+
+        # Se couber após abreviações
+        if len(texto_abreviado) <= limite:
+            return texto_abreviado
+
+        # Remove espaços
+        texto_sem_espacos = re.sub(r"\s+", "", texto_abreviado)
+
+        if len(texto_sem_espacos) <= limite:
+            return texto_sem_espacos
+
+        # Último recurso: truncar
+        return texto_sem_espacos[:limite]
+
+
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", proposta_nbs: str = "", alienacao_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
         
         app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
         dlg = app.window(title_re=".*Venda.*")
@@ -86,29 +136,29 @@ class NFEmissionPage:
         sleep(2)
         painel_incluir = self.window.descendants(control_type="Pane")[-1]
         self.window.set_focus()
-        if veiculo_seminovo:
-            send_keys("{TAB}")
-            
-            send_keys("^a")  # CTRL + A
-            send_keys("^c")  # CTRL + C
-
-            texto = pyperclip.paste()
-            novo_texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
-
-            pyperclip.copy(novo_texto)  # copia com acentos para o clipboard
-            sleep(1)
-            send_keys("^v") # Ctrl+V
-            send_keys("{TAB 2}")
-            
-        else:
-            send_keys("{TAB 3}")
-            send_keys("{UP 10}")
+        send_keys("{TAB}")
         
-        if complemento_nbs:
+        send_keys("^a")  # CTRL + A
+        send_keys("^c")  # CTRL + C
+
+        texto = pyperclip.paste()
+        if alienacao_nbs:
+            texto += alienacao_nbs
+        if veiculo_seminovo:
+            texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
+
+
+
+        pyperclip.copy(texto)  # copia com acentos para o clipboard
+        sleep(1)
+        send_keys("^v") # Ctrl+V
+        send_keys("{TAB 2}")
+                    
+        if proposta_nbs:
             
             send_keys("{ENTER}")
             send_keys("{UP}")
-            pyperclip.copy(complemento_nbs)  # copia com acentos para o clipboard
+            pyperclip.copy(proposta_nbs)  # copia com acentos para o clipboard
             sleep(1)
             send_keys("^v") # Ctrl+V
 
@@ -206,10 +256,10 @@ class NFEmissionPage:
     def _capturar_mensagem_popup(self, title):
         try:
             sleep(3)
-            deadline = time.time() + 180
+            deadline = time() + 180
             popup = None
 
-            while time.time() < deadline:
+            while time() < deadline:
                 try:
                     popup = Desktop(backend="uia").window(title_re=title)
                     popup.wait("visible", timeout=3)

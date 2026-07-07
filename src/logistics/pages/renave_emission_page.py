@@ -131,6 +131,7 @@ class RenaveEmissionPage:
 
     def _capturar_mensagem_popup_erro(self, title):
         try:
+            popup = None
             sleep(3)
             popup = Desktop(backend="uia").window(title_re=title)
 
@@ -156,10 +157,10 @@ class RenaveEmissionPage:
 
             texto = " ".join(textos)
 
-            return texto
+            return texto, popup
 
         except Exception as e:
-            return ""
+            return "", ""
 
     def limpar_filtro(self, pane):
         rect = pane.rectangle()
@@ -249,10 +250,12 @@ class RenaveEmissionPage:
                 try:
                     logger.info(f"Clicando em operação selecionada (tentativa {tentativa + 1}/3)")
                     botao_operacao_selecionada.click_input()
-                    mensagem_erro = self._capturar_mensagem_popup_erro(title=".*Informação*")
+                    mensagem_erro, popup = self._capturar_mensagem_popup_erro(title=".*Informação*")
                     if not mensagem_erro:
                         break
                     logger.warning(f"Erro identificado na tentativa {tentativa + 1}/3: {mensagem_erro}. Tentando novamente...")
+                    ok_button = popup.child_window(title="OK", control_type="Button")
+                    ok_button.click_input()
                 except Exception as e:
                     logger.warning(f"Falha no clique da operação selecionada na tentativa {tentativa + 1}/3: {e}. Tentando novamente...")
 

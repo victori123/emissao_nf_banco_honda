@@ -56,7 +56,7 @@ class NBSMainFlow:
         message = str(exc).lower()
         has_chassis_reference = "chassi" in message
         has_missing_terms = (
-            "não encontrado" in message
+            "não localizada" in message
             or "nao encontrado" in message
             or "não localizado" in message
             or "nao localizado" in message
@@ -81,7 +81,8 @@ class NBSMainFlow:
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
             ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
             observacao_nbs = (row.get("observacao_nbs") or "").strip()
-            complemento_nbs = (row.get("complemento_nbs") or "").strip()
+            proposta_nbs = (row.get("proposta_nbs") or "").strip()
+            alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
             veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
             novo_renavan = (row.get("renvam_informado") or "").strip()
             file_name = (row.get("cliente") or "").strip() + ".pdf"
@@ -121,7 +122,8 @@ class NBSMainFlow:
                             ficha_observacao,
                             ficha_codigo_cfop,
                             observacao_nbs,
-                            complemento_nbs,
+                            proposta_nbs,
+                            alienacao_nbs,
                             veiculo_seminovo,
                             novo_renavan)
 
