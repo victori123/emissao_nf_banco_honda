@@ -158,7 +158,7 @@ class NFEmissionPage:
             
             send_keys("{ENTER}")
             send_keys("{UP}")
-            pyperclip.copy(proposta_nbs)  # copia com acentos para o clipboard
+            pyperclip.copy(f"Proposta: {proposta_nbs}")  # copia com acentos para o clipboard
             sleep(1)
             send_keys("^v") # Ctrl+V
 
@@ -349,7 +349,7 @@ class NFEmissionPage:
         logger.info(f"Clickou em OK na primeira janela de Informação com a msg {mensagem_atencao}")
 
         if self._is_success_message(mensagem_os):
-            mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informação*")
+            mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informa*")
             ok_button = janela_informacao_segunda.child_window(title="Ok")
             ok_button.click_input()
             logger.info(f"Clickou em OK na segunda janela de Informação com a msg {mensagem}")

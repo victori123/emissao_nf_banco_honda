@@ -103,7 +103,7 @@ class CrmAutoPage(BaseCRMPage):
     def attach_pdf_to_current_opportunity(self, pdf_path: str, chassi: str, numero_evento: str) -> None:
         self.logger.info("Attachment step for path: %s", pdf_path)
         self.click(*self._PESQUISAR_EVENTO_LUPA)
-        self.click(*self._CLEAR_BUTTON)
+        #self.click(*self._CLEAR_BUTTON)
         self.click(*self._CHASSI_CHECKBOX_BUTTON)
         self.fill(*self._CHASSI_TEXT_FIELD, chassi)
         self.click(*self._PESQUISAR_EVENTO_BUTTON)
@@ -301,7 +301,8 @@ class CrmAutoPage(BaseCRMPage):
         dados['veiculo_siminovo'] =  self.check_semi_novo_from_observacao(lista_observacao)
         dados['renvam_informado'] = self.extract_renavan_from_observacao(lista_observacao)
         dados['observacao_nbs'] = self.extract_obs_nbs_from_observacao(lista_observacao)
-        dados['complemento_nbs'] = self.extract_complemento_nbs_from_observacao(lista_observacao)
+        dados['alienacao_nbs'] = self.extract_alienacao_nbs_from_observacao(lista_observacao)
+        dados['proposta_nbs'] = self.extract_proposta_nbs_from_observacao(lista_observacao)
 
         self.click(*self._CLOSE_OBSERVATION)
 
@@ -334,7 +335,24 @@ class CrmAutoPage(BaseCRMPage):
             texto = obs.get("Observação", "")
 
             match = re.search(
-                r'(?:OBSERVA(?:ÇÃO|CAO)|OBS)\s*:\s*(.+)',
+                r'(?:OBSERVA(?:ÇÃO|CAO)|OBS)\s*:?\s*(.+)',
+                texto,
+                re.IGNORECASE
+            )
+
+            if match:
+                return match.group(1).strip()
+
+        return ""
+    
+    def extract_alienacao_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+        import re
+
+        for obs in observacoes:
+            texto = obs.get("Observação", "")
+            
+            match = re.search(
+                r'ALIENA(?:ÇÃO|CAO)\s*:?\s*(.+)',
                 texto,
                 re.IGNORECASE
             )
@@ -344,17 +362,23 @@ class CrmAutoPage(BaseCRMPage):
 
         return ""
 
-    
-    def extract_complemento_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+    def extract_proposta_nbs_from_observacao(self, observacoes: list[dict]) -> str:
+        import re
+
         for obs in observacoes:
             texto = obs.get("Observação", "")
-            if "COMPL" in texto.upper():
-                # Extrai o código COMPL: usando uma expressão regular
-                import re
-                match = re.search(r'COMPL[:\s]*([0-9]+)', texto, re.IGNORECASE)
-                if match:
-                    return str(match.group(1))
+
+            match = re.search(
+                r'PROPOSTA\s*:?\s*([A-Z0-9\-_/ ]+)',
+                texto,
+                re.IGNORECASE
+            )
+
+            if match:
+                return match.group(1).strip()
+
         return ""
+
     
     def check_semi_novo_from_observacao(self, observacoes: list[dict]) -> str:
         for obs in observacoes:
