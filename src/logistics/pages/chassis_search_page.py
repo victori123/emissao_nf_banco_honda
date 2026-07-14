@@ -125,7 +125,7 @@ class ChassisSearchPage:
                 logger.info(f"Proposta localizada {dados_encontrado}")
             
             else:
-                raise Exception("Proposta não localizada para o chassis informado")
+                raise Exception("Proposta não localizada para o chassi informado")
 
             return dados_encontrado        
     
