@@ -6,6 +6,7 @@ from src.crm.pages.crm_auto_page import CrmAutoPage
 from src.shared.utils.file_handler import move_pending_files_to_output_dir, save_csv
 from src.shared.utils.logger import get_logger
 from src.shared.utils.retry import retry
+from src.shared.utils.execution_report import append_execution_report
 from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 from datetime import datetime
@@ -44,6 +45,21 @@ def run(driver: Any) -> list[dict]:
     # Step 4 – Persist results
     output_path = DATA_INPUT_DIR / f"crm_nfs_{datetime.now():%Y%m%d_%H%M%S}.csv"
     save_csv(all_nfs, output_path)
+    append_execution_report(
+        {
+            "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+            "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+            "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+            "bot": "crm",
+            "arquivo_processado": output_path.name,
+            "etapa_atual": "extract_nfs",
+            "status": "SUCESSO",
+            "quantidade_processada": len(all_nfs),
+            "quantidade_nao_processada": 0,
+            "mensagem": "Extração concluída",
+            "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+        }
+    )
     logger.info(f"Nfs saved to {output_path}")
     logger.info("=== END: extract_nfs_flow ===")
 

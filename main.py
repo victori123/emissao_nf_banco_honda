@@ -1,6 +1,9 @@
 import argparse
 import sys
+from datetime import datetime
+from src.shared.utils.execution_report import append_execution_report
 from src.shared.utils.logger import get_logger
+from config.settings import LOGS_DIR
 
 logger = get_logger("main")
 
@@ -51,9 +54,41 @@ def main():
         if "all" in args.bot or "crm-attach" in args.bot:
             run_crm_attach()
 
-        
+        append_execution_report(
+            {
+                "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+                "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+                "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+                "bot": ",".join(args.bot),
+                "arquivo_processado": "",
+                "etapa_atual": "execucao",
+                "status": "SUCESSO",
+                "quantidade_processada": 0,
+                "quantidade_nao_processada": 0,
+                "mensagem": "Execução concluída",
+                "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+            },
+            LOGS_DIR / "execution_report.csv",
+        )
+
     except Exception as exc:
         logger.exception(f"Fatal error: {exc}")
+        append_execution_report(
+            {
+                "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+                "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+                "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+                "bot": ",".join(args.bot),
+                "arquivo_processado": "",
+                "etapa_atual": "execucao",
+                "status": "ERRO",
+                "quantidade_processada": 0,
+                "quantidade_nao_processada": 0,
+                "mensagem": str(exc)[:512],
+                "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+            },
+            LOGS_DIR / "execution_report.csv",
+        )
         sys.exit(1)
 
 

@@ -9,7 +9,8 @@ from src.logistics.flows.renave_emission_flow import RenaveEmissionFlow
 from src.logistics.flows.print_nf_flow import PrintNFFlow
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
-from config.settings import LOGISTICS_BASE_SERVER, DATA_INPUT_DIR, DATA_OUTPUT_DIR
+from src.shared.utils.execution_report import append_execution_report
+from config.settings import LOGISTICS_BASE_SERVER, DATA_INPUT_DIR, DATA_OUTPUT_DIR, LOGS_DIR
 
 from pywinauto import Desktop, Application
 logger = get_logger(__name__)
@@ -72,10 +73,20 @@ class NBSMainFlow:
         rows = load_csv(input_file)
         if not rows:
             logger.warning(f"Arquivo {input_file.name} está vazio. Movendo para output sem processamento.")
+            self._append_report_row(
+                input_file=input_file,
+                etapa_atual="processamento",
+                status="SUCESSO",
+                quantidade_processada=0,
+                quantidade_nao_processada=0,
+                mensagem="Arquivo vazio; movido para output sem processamento",
+            )
             self._move_file_to_output(input_file)
             return
 
         updated_rows = []
+        processed_count = 0
+        skipped_count = 0
         for row in rows:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
@@ -93,6 +104,7 @@ class NBSMainFlow:
                 row["nbs_status"] = "missing_chassis"
                 row["nbs_error"] = "Chassi não encontrado na linha"
                 updated_rows.append(row)
+                skipped_count += 1
                 continue
 
             nf_main_page = ChassisSearchFlow(window)
@@ -127,6 +139,7 @@ class NBSMainFlow:
 
                         row["nbs_status"] = "success"
                         row["nbs_error"] = ""
+                        processed_count += 1
                         if confirmacao_mensagem:
                             row["nbs_confirmation_message"] = confirmacao_mensagem
                         if isinstance(search_result, dict):
@@ -176,6 +189,7 @@ class NBSMainFlow:
             except Exception as exc:
                 row["nbs_status"] = "failed"
                 row["nbs_error"] = str(exc)[:512]
+                skipped_count += 1
                 logger.error(f"Erro ao processar chassis {chassis}: {exc}", exc_info=True)
 
             updated_rows.append(row)
@@ -187,6 +201,15 @@ class NBSMainFlow:
         save_csv(updated_rows, output_file)
         logger.info(f"Arquivo atualizado salvo em {output_file}")
 
+        self._append_report_row(
+            input_file=input_file,
+            etapa_atual="emissao_nf",
+            status="SUCESSO" if skipped_count == 0 else "ERRO",
+            quantidade_processada=processed_count,
+            quantidade_nao_processada=skipped_count,
+            mensagem="Execução concluída" if skipped_count == 0 else f"Processamento com {skipped_count} item(ns) não processado(s)",
+        )
+
         input_file.unlink()
         logger.info(f"Arquivo movido para output: {output_file.name}")
 
@@ -196,6 +219,24 @@ class NBSMainFlow:
             output_file = DATA_OUTPUT_DIR / f"{output_file.stem}_{datetime.now():%Y%m%d_%H%M%S}{output_file.suffix}"
         input_file.replace(output_file)
         logger.info(f"Arquivo vazio movido para output: {output_file.name}")
+
+    def _append_report_row(self, input_file: Path, etapa_atual: str, status: str, quantidade_processada: int, quantidade_nao_processada: int, mensagem: str):
+        append_execution_report(
+            {
+                "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+                "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+                "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+                "bot": "logistics",
+                "arquivo_processado": input_file.name,
+                "etapa_atual": etapa_atual,
+                "status": status,
+                "quantidade_processada": quantidade_processada,
+                "quantidade_nao_processada": quantidade_nao_processada,
+                "mensagem": mensagem,
+                "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+            },
+            LOGS_DIR / "execution_report.csv",
+        )
 
     def _execute_and_record_flow(self, row: dict, flow_name: str, callable_fn, chassis: str, logger_msg: str):
         try:

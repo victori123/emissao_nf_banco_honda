@@ -6,6 +6,7 @@ from src.crm.pages.main_page import MainPage
 from src.crm.pages.crm_auto_page import CrmAutoPage
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
+from src.shared.utils.execution_report import append_execution_report
 from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
@@ -52,6 +53,8 @@ def run(driver) -> list[str]:
         return []
 
     attached_files: list[str] = []
+    total_rows = 0
+    failed_rows = 0
 
     for csv_path in attachment_csvs:
         rows = get_attachment_rows(csv_path)
@@ -59,6 +62,7 @@ def run(driver) -> list[str]:
             continue
 
         for row in rows:
+            total_rows += 1
             pdf_path = row.get("nbs_attachment_path") or row.get("attachment_path")
             chassi = row.get("veiculo_chassi")
             numero_evento = row.get("numero")
@@ -68,6 +72,7 @@ def run(driver) -> list[str]:
             pdf_file = Path(pdf_path)
             if not pdf_file.exists():
                 update_attachment_result(row, "failed", f"Arquivo não encontrado: {pdf_path}")
+                failed_rows += 1
                 logger.warning("PDF não encontrado para anexar: %s", pdf_path)
                 continue
 
@@ -79,9 +84,25 @@ def run(driver) -> list[str]:
                 attached_files.append(pdf_file.name)
             except Exception as exc:
                 update_attachment_result(row, "failed", str(exc)[:512])
+                failed_rows += 1
                 logger.exception("Falha ao anexar PDF ao CRM: %s", pdf_file.name)
 
         save_csv(rows, csv_path)
 
+    append_execution_report(
+        {
+            "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+            "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+            "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+            "bot": "crm-attach",
+            "arquivo_processado": ", ".join(sorted({csv_path.name for csv_path in attachment_csvs})),
+            "etapa_atual": "attach_nfs",
+            "status": "SUCESSO" if failed_rows == 0 else "ERRO",
+            "quantidade_processada": total_rows - failed_rows,
+            "quantidade_nao_processada": failed_rows,
+            "mensagem": "Anexação concluída" if failed_rows == 0 else "Alguns anexos falharam",
+            "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+        }
+    )
     logger.info("=== END: attach_nfs_flow ===")
     return attached_files
