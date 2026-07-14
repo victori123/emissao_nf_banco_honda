@@ -308,84 +308,38 @@ class CrmAutoPage(BaseCRMPage):
 
         return dados
     
-    def extract_cfop_from_observacao(self, observacoes: list[dict]) -> str:
+    def _extract_tag_value(self, observacoes: list[dict], tag_names: list[str]) -> str:
+        normalized_tags = {tag.upper().replace(" ", "") for tag in tag_names}
+
         for obs in observacoes:
             texto = obs.get("Observação", "")
-            if "CFOP" in texto.upper():
-                # Extrai o código CFOP usando uma expressão regular
-                match = re.search(r'CFOP[:\s]*([0-9]+)', texto, re.IGNORECASE)
-                if match:
-                    return match.group(1)
-        return "5405"  # Valor padrão caso CFOP não seja encontrado
+            for match in re.finditer(r"\[([^\[\]]+)\]\s*(.*?)\s*\[/\1\]", texto, re.IGNORECASE | re.DOTALL):
+                tag_name = match.group(1).strip().upper().replace(" ", "")
+                if tag_name in normalized_tags:
+                    return match.group(2).strip()
+
+        return ""
+
+    def extract_cfop_from_observacao(self, observacoes: list[dict]) -> str:
+        valor = self._extract_tag_value(observacoes, ["CFOP"])
+        return valor or "5405"
     
     def extract_renavan_from_observacao(self, observacoes: list[dict]) -> str:
-        for obs in observacoes:
-            texto = obs.get("Observação", "")
-            if "RENAVAN" in texto.upper():
-                # Extrai o código RENAVAN usando uma expressão regular
-                match = re.search(r'RENAVAN[\s]*([0-9]+)', texto, re.IGNORECASE)
-                if match:
-                    return str(match.group(1))
-        return ""
+        return self._extract_tag_value(observacoes, ["RENAVAN"])
     
 
     def extract_obs_nbs_from_observacao(self, observacoes: list[dict]) -> str:
-
-        for obs in observacoes:
-            texto = obs.get("Observação", "")
-
-            match = re.search(
-                r'(?:OBSERVA(?:ÇÃO|CAO)|OBS)\s*:?\s*(.+)',
-                texto,
-                re.IGNORECASE
-            )
-
-            if match:
-                return match.group(1).strip()
-
-        return ""
+        return self._extract_tag_value(observacoes, ["OBSERVAÇÃO", "OBS"])
     
     def extract_alienacao_nbs_from_observacao(self, observacoes: list[dict]) -> str:
-        import re
-
-        for obs in observacoes:
-            texto = obs.get("Observação", "")
-            
-            match = re.search(
-                r'ALIENA(?:ÇÃO|CAO)\s*:?\s*(.+)',
-                texto,
-                re.IGNORECASE
-            )
-
-            if match:
-                return match.group(1).strip()
-
-        return ""
+        return self._extract_tag_value(observacoes, ["ALIENAÇÃO", "ALIENACAO"])
 
     def extract_proposta_nbs_from_observacao(self, observacoes: list[dict]) -> str:
-        import re
-
-        for obs in observacoes:
-            texto = obs.get("Observação", "")
-
-            match = re.search(
-                r'PROPOSTA\s*:?\s*([A-Z0-9\-_/ ]+)',
-                texto,
-                re.IGNORECASE
-            )
-
-            if match:
-                return match.group(1).strip()
-
-        return ""
+        return self._extract_tag_value(observacoes, ["PROPOSTA"])
 
     
-    def check_semi_novo_from_observacao(self, observacoes: list[dict]) -> str:
-        for obs in observacoes:
-            texto = obs.get("Observação", "")
-            if "SEMINOVA" in texto.upper() or "SEMINOVO" in texto.upper():
-                return True
-        return ''
+    def check_semi_novo_from_observacao(self, observacoes: list[dict]) -> bool:
+        return bool(self._extract_tag_value(observacoes, ["SEMINOVO", "SEMINOVA"]))
     
     def extract_relevant_observation(self, observacoes: list[dict]) -> str:
         palavras_chave = ["pátio", "trânsito", "emplacamento", "patio", "transito"]
