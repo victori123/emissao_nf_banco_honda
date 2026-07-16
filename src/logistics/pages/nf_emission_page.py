@@ -107,7 +107,7 @@ class NFEmissionPage:
         return texto_sem_espacos[:limite]
 
 
-    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", proposta_nbs: str = "", alienacao_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
+    def preencher_dados_nota_fiscal(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", proposta_nbs: str = "", alienacao_nbs: str = "", veiculo_seminovo: bool = False, renavan: str=""):
         
         app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
         dlg = app.window(title_re=".*Venda.*")
@@ -147,8 +147,6 @@ class NFEmissionPage:
             texto += alienacao_nbs
         if veiculo_seminovo:
             texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
-
-
 
         pyperclip.copy(texto)  # copia com acentos para o clipboard
         sleep(1)

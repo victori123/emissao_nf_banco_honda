@@ -190,7 +190,7 @@ class NBSMainFlow:
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 propostas_window = app.window(handle=nova_handle)
-
+                context["veiculo_seminovo"] = context["veiculo_seminovo"].lower() in ["true", "1", "yes"]
                 confirmacao_mensagem = NFEmissionFlow(propostas_window).execute(
                     context["ficha_observacao"],
                     context["ficha_codigo_cfop"],
@@ -250,6 +250,7 @@ class NBSMainFlow:
             row["nbs_etapa_processamento"] = "aguardando_impressao"
 
     def _process_print_stage(self, row_contexts: list[dict]):
+        print_flow = PrintNFFlow()
         for context in row_contexts:
             row = context["row"]
             chassis = context["chassis"]
@@ -260,7 +261,7 @@ class NBSMainFlow:
 
             row["nbs_etapa_processamento"] = "print_nf"
             try:
-                resultado = PrintNFFlow().execute(chassis, download_path)
+                resultado = print_flow.execute(chassis, download_path)
                 row["nbs_print_nf_message"] = resultado or ""
                 texto = (resultado or "").lower()
                 row["nbs_print_nf_status"] = "failed" if any(e in texto for e in self.ERRO_INDICADORES) else "success"
@@ -270,6 +271,12 @@ class NBSMainFlow:
                 logger.warning(f"Falha na impressão da NF para chassis {chassis}: {exc}")
 
             row["nbs_etapa_processamento"] = "concluido"
+            
+        try:
+            print_flow.close_print_window()
+        except Exception:
+            pass
+
 
     def _finalize_row_status(self, row: dict, download_path: str):
         if row.get("nbs_status") == "missing_chassis":
