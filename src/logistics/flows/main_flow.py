@@ -93,47 +93,10 @@ class NBSMainFlow:
             self._move_file_to_output(input_file)
             return
 
-        row_contexts = []
+        row_contexts = self._preprocess_rows(rows, input_file)
 
-        for row in rows:
-            chassis = (row.get("veiculo_chassi") or "").strip()
-            ficha_observacao = (row.get("ficha_observacao") or "").strip()
-            ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
-            observacao_nbs = (row.get("observacao_nbs") or "").strip()
-            proposta_nbs = (row.get("proposta_nbs") or "").strip()
-            alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
-            veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
-            novo_renavan = (row.get("renvam_informado") or "").strip()
-            file_name = (row.get("cliente") or "").strip() + ".pdf"
-            download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
-            row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            row["nbs_etapa_processamento"] = "aguardando_nf_emissao"
-
-            if not chassis:
-                logger.warning(f"Linha sem chassis encontrada em {input_file.name}. Pulando.")
-                row["nbs_status"] = "missing_chassis"
-                row["nbs_error"] = "Chassi não encontrado na linha"
-                row["nbs_etapa_processamento"] = "sem_chassi"
-                row_contexts.append({"row": row, "chassis": chassis, "download_path": download_path})
-                continue
-            row_contexts.append(
-                {
-                    "row": row,
-                    "chassis": chassis,
-                    "download_path": download_path,
-                    "ficha_observacao": ficha_observacao,
-                    "ficha_codigo_cfop": ficha_codigo_cfop,
-                    "observacao_nbs": observacao_nbs,
-                    "proposta_nbs": proposta_nbs,
-                    "alienacao_nbs": alienacao_nbs,
-                    "veiculo_seminovo": veiculo_seminovo,
-                    "novo_renavan": novo_renavan,
-                }
-            )
-
-        self._process_nf_emission_stage(row_contexts, window)
-        self._process_renave_stage(row_contexts, window)
-        self._process_print_stage(row_contexts)
+        self._run_emission_pass(row_contexts, window)
+        self._run_postprocessing_pass(row_contexts, window)
 
         updated_rows = []
         for context in row_contexts:
@@ -162,6 +125,55 @@ class NBSMainFlow:
 
         input_file.unlink()
         logger.info(f"Arquivo movido para output: {output_file.name}")
+
+    def _preprocess_rows(self, rows: list[dict], input_file: Path) -> list[dict]:
+        row_contexts = []
+
+        for row in rows:
+            chassis = (row.get("veiculo_chassi") or "").strip()
+            ficha_observacao = (row.get("ficha_observacao") or "").strip()
+            ficha_codigo_cfop = (row.get("ficha_codigo_cfop") or "").strip()
+            observacao_nbs = (row.get("observacao_nbs") or "").strip()
+            proposta_nbs = (row.get("proposta_nbs") or "").strip()
+            alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
+            veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
+            novo_renavan = (row.get("renvam_informado") or "").strip()
+            file_name = (row.get("cliente") or "").strip() + ".pdf"
+            download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
+            row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            row["nbs_etapa_processamento"] = "aguardando_nf_emissao"
+
+            if not chassis:
+                logger.warning(f"Linha sem chassis encontrada em {input_file.name}. Pulando.")
+                row["nbs_status"] = "missing_chassis"
+                row["nbs_error"] = "Chassi não encontrado na linha"
+                row["nbs_etapa_processamento"] = "sem_chassi"
+                row_contexts.append({"row": row, "chassis": chassis, "download_path": download_path})
+                continue
+
+            row_contexts.append(
+                {
+                    "row": row,
+                    "chassis": chassis,
+                    "download_path": download_path,
+                    "ficha_observacao": ficha_observacao,
+                    "ficha_codigo_cfop": ficha_codigo_cfop,
+                    "observacao_nbs": observacao_nbs,
+                    "proposta_nbs": proposta_nbs,
+                    "alienacao_nbs": alienacao_nbs,
+                    "veiculo_seminovo": veiculo_seminovo,
+                    "novo_renavan": novo_renavan,
+                }
+            )
+
+        return row_contexts
+
+    def _run_emission_pass(self, row_contexts: list[dict], window):
+        self._process_nf_emission_stage(row_contexts, window)
+
+    def _run_postprocessing_pass(self, row_contexts: list[dict], window):
+        self._process_renave_stage(row_contexts, window)
+        self._process_print_stage(row_contexts)
 
     def _process_nf_emission_stage(self, row_contexts: list[dict], window):
         for context in row_contexts:
