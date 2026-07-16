@@ -238,7 +238,7 @@ class RenaveEmissionPage:
                 any(item['Operação'] == v['Operação'] and item['Status'] == v['Status'] for item in dados_encontrados)
                 for v in dados_esperado
             ):
-                raise Exception(f'Nenhuma das operações esperadas foi localizada com Status Pendente: {dados_encontrados}')
+                print(f'Nenhuma das operações esperadas foi localizada com Status Pendente: {dados_encontrados}')
 
             botao_operacao_selecionada = self.window.child_window(
                 title="Processar Operação selecionada",

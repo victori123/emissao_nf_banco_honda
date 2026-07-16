@@ -11,8 +11,8 @@ class LoginPage:
         logger.info("Iniciando login (painéis detectados)")
 
         try:
-            self.window.set_focus()
             self.window.wait("ready", timeout=20)
+            self.window.set_focus()
 
             # pega os painéis focáveis
             panes = [p for p in self.window.children() if p.friendly_class_name() == "Pane"]
@@ -23,6 +23,8 @@ class LoginPage:
             if len(panes) < 2:
                 raise Exception("Não encontrou painéis suficientes")
 
+            edits[0].set_text(server)
+            logger.info("Server Preenchido")
             # Usuário
             panes[1].click_input()
             self.window.type_keys(user, with_spaces=True)
@@ -35,11 +37,7 @@ class LoginPage:
 
             logger.info("Senha preenchida")
 
-            edits[0].set_text(server)
-
-            logger.info("Server Preenchido")
-
-            # enviar login
+            edits[0].click_input()
             self.window.type_keys("{ENTER}")
 
             logger.info("Login enviado com ENTER")

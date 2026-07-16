@@ -50,11 +50,12 @@ class NFEmissionPage:
                 for t in wrapper.descendants(control_type="Text")
                 if t.window_text()
             ) 
+        # incluir cenário de msg O veículo está com o status "Em Demonstração".
+        popup.child_window(title="OK", control_type="Button").click_input()
 
         if "A nota fiscal será emitida para o cliente" not in mensagem:
             raise Exception(mensagem)
         
-        popup.child_window(title="OK", control_type="Button").click_input()
     
     def reduzir_texto(self, texto: str, limite: int = 500) -> str:
         if not texto:

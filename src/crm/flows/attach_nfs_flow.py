@@ -33,9 +33,33 @@ def find_attachment_csvs() -> list[Path]:
                 candidates.append(csv_path)
     return candidates
 
+def execution_report_row(input_file: str, total_rows: int, failed_rows: int, message: str = None) -> dict:
+    return {
+        "data_execucao": datetime.now().strftime("%Y-%m-%d"),
+        "hora_inicio": datetime.now().strftime("%H:%M:%S"),
+        "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
+        "bot": "crm-attach",
+        "arquivo_processado": input_file if input_file else "N/A",
+        "etapa_atual": "attach_nfs",
+        "status": "SUCESSO" if failed_rows == 0 else "ERRO",
+        "quantidade_processada": total_rows - failed_rows,
+        "quantidade_nao_processada": failed_rows,
+        "mensagem": message or ("Anexação concluída" if failed_rows == 0 else "Alguns anexos falharam"),
+        "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
+    }
 
 def run(driver) -> list[str]:
     logger.info("=== START: attach_nfs_flow ===")
+
+    attached_files: list[str] = []
+    total_rows = 0
+    failed_rows = 0
+
+    attachment_csvs = find_attachment_csvs()
+    if not attachment_csvs:
+        logger.warning("Nenhum CSV com nbs_attachment_path encontrado para anexar ao CRM.")
+        append_execution_report(execution_report_row(None, 0, 0, "Nenhum CSV com nbs_attachment_path encontrado"))
+        return []
 
     LoginPage(driver).open().login(CRMCredentials.USERNAME, CRMCredentials.PASSWORD)
 
@@ -47,14 +71,6 @@ def run(driver) -> list[str]:
     assert crm_auto_page.is_loaded(), "Crm Auto page did not load"
     crm_auto_page.go_to_crm_autos()
 
-    attachment_csvs = find_attachment_csvs()
-    if not attachment_csvs:
-        logger.warning("Nenhum CSV com nbs_attachment_path encontrado para anexar ao CRM.")
-        return []
-
-    attached_files: list[str] = []
-    total_rows = 0
-    failed_rows = 0
 
     for csv_path in attachment_csvs:
         rows = get_attachment_rows(csv_path)
@@ -89,20 +105,7 @@ def run(driver) -> list[str]:
 
         save_csv(rows, csv_path)
 
-    append_execution_report(
-        {
-            "data_execucao": datetime.now().strftime("%Y-%m-%d"),
-            "hora_inicio": datetime.now().strftime("%H:%M:%S"),
-            "hora_ultimo_evento": datetime.now().strftime("%H:%M:%S"),
-            "bot": "crm-attach",
-            "arquivo_processado": ", ".join(sorted({csv_path.name for csv_path in attachment_csvs})),
-            "etapa_atual": "attach_nfs",
-            "status": "SUCESSO" if failed_rows == 0 else "ERRO",
-            "quantidade_processada": total_rows - failed_rows,
-            "quantidade_nao_processada": failed_rows,
-            "mensagem": "Anexação concluída" if failed_rows == 0 else "Alguns anexos falharam",
-            "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
-        }
-    )
+    append_execution_report(execution_report_row(", ".join(sorted(csv_path.name for csv_path in attachment_csvs)), total_rows, failed_rows))
+
     logger.info("=== END: attach_nfs_flow ===")
     return attached_files

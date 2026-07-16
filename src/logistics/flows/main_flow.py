@@ -38,19 +38,28 @@ class NBSMainFlow:
         self.password = password
         self.server = server
 
-        window = self.session.start()
+        self.window = None 
 
-        LoginFlow(window).execute(user, password, server)
-        self._process_input_files(window)
+        self._process_input_files()
 
-    def _process_input_files(self, window):
+    def _process_input_files(self):
         input_files = sorted(DATA_INPUT_DIR.glob("*.csv"))
         if not input_files:
             logger.info("Nenhum arquivo CSV encontrado em input. Nada a processar.")
+            self._append_report_row(
+                input_file=Path("N/A"),
+                etapa_atual="processamento",
+                status="SUCESSO",
+                quantidade_processada=0,
+                quantidade_nao_processada=0,
+                mensagem="Sem arquivo para processamento",
+            )
             return
-
+        
+        self.window = self.session.start()
+        LoginFlow(self.window).execute(self.user, self.password, self.server)
         for input_file in input_files:
-            self._process_csv_file(input_file, window)
+            self._process_csv_file(input_file, self.window)
 
     @staticmethod
     def _is_missing_or_emitted_nf_error(exc: Exception) -> bool:
@@ -87,6 +96,7 @@ class NBSMainFlow:
         updated_rows = []
         processed_count = 0
         skipped_count = 0
+       
         for row in rows:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
@@ -107,7 +117,6 @@ class NBSMainFlow:
                 updated_rows.append(row)
                 skipped_count += 1
                 continue
-
             nf_main_page = ChassisSearchFlow(window)
             renave = RenaveEmissionFlow(window)
             try:
@@ -150,6 +159,10 @@ class NBSMainFlow:
 
                         logger.info(f"Chassis {chassis} processado com sucesso.")
                     except Exception as exc:
+                        try:
+                            nf_main_page.close_propostas_window()
+                        except Exception:
+                            pass
                         if self._is_missing_or_emitted_nf_error(exc):
                             skip_nf_emission = True
                             row["nbs_status"] = "skipped_nf_emission"
@@ -250,3 +263,4 @@ class NBSMainFlow:
             row[f"nbs_{flow_name}_status"] = "failed"
             row[f"nbs_{flow_name}_message"] = str(exc)[:512]
             logger.warning(f"{logger_msg} para chassis {chassis}: {exc}")
+            raise

@@ -389,6 +389,12 @@ class CrmAutoPage(BaseCRMPage):
             close.click()
             self.sleep_withou_condition(3)
 
+            #se dias de patio for menor que 2 desconsidera:
+            if detalhes.get("veiculo_dias_patio") and detalhes["veiculo_dias_patio"].isdigit():
+                if int(detalhes["veiculo_dias_patio"]) < 2:
+                    self.logger.info(f"Skipping Evento: {numero} due to veiculo_dias_patio < 2")
+                    continue
+
             resultados.append({
                 "status": status,
                 "responsavel": responsavel,
