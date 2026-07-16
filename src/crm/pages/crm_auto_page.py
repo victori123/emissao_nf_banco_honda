@@ -318,6 +318,7 @@ class CrmAutoPage(BaseCRMPage):
             return re.sub(r"\s+", "", value)
 
         normalized_tags = {_normalize_tag(tag) for tag in tag_names}
+        tag_pattern = "|".join(sorted((re.escape(tag) for tag in normalized_tags), key=len, reverse=True))
 
         for obs in observacoes:
             texto = str(obs.get("Observação", "") or "")
@@ -337,6 +338,19 @@ class CrmAutoPage(BaseCRMPage):
 
                 start = open_match.end()
                 end = open_tag_matches[idx + 1].start() if idx + 1 < len(open_tag_matches) else len(texto)
+                value = texto[start:end].strip(" \t\r\n:-")
+                if value:
+                    return value
+
+            # Caso textual: TAG: valor ou TAG - valor (ex.: OBSERVACAO: ...)
+            normalized_text = unicodedata.normalize("NFKD", texto)
+            normalized_text = "".join(ch for ch in normalized_text if not unicodedata.combining(ch)).upper()
+
+            textual_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{tag_pattern})\s*[:\-]\s*", re.IGNORECASE)
+            for tag_match in textual_tag_regex.finditer(normalized_text):
+                start = tag_match.end()
+                next_tag = textual_tag_regex.search(normalized_text, start)
+                end = next_tag.start() if next_tag else len(normalized_text)
                 value = texto[start:end].strip(" \t\r\n:-")
                 if value:
                     return value
