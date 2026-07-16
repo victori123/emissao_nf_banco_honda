@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from selenium.webdriver.common.by import By
 from src.crm.pages.base_crm_page import BaseCRMPage
 from src.shared.exceptions.rpa_exceptions import DataExtractionException
@@ -309,14 +310,36 @@ class CrmAutoPage(BaseCRMPage):
         return dados
     
     def _extract_tag_value(self, observacoes: list[dict], tag_names: list[str]) -> str:
-        normalized_tags = {tag.upper().replace(" ", "") for tag in tag_names}
+        def _normalize_tag(value: str) -> str:
+            value = unicodedata.normalize("NFKD", str(value or ""))
+            value = "".join(ch for ch in value if not unicodedata.combining(ch))
+            value = value.upper().strip()
+            value = value.replace("[", "").replace("]", "").replace("/", "")
+            return re.sub(r"\s+", "", value)
+
+        normalized_tags = {_normalize_tag(tag) for tag in tag_names}
 
         for obs in observacoes:
-            texto = obs.get("Observação", "")
+            texto = str(obs.get("Observação", "") or "")
+
+            # Caso completo: [TAG]valor[/TAG]
             for match in re.finditer(r"\[([^\[\]]+)\]\s*(.*?)\s*\[/\1\]", texto, re.IGNORECASE | re.DOTALL):
-                tag_name = match.group(1).strip().upper().replace(" ", "")
+                tag_name = _normalize_tag(match.group(1))
                 if tag_name in normalized_tags:
                     return match.group(2).strip()
+
+            # Caso sem fechamento: [TAG] valor ... (ate a proxima tag ou fim)
+            open_tag_matches = list(re.finditer(r"\[([^\[\]/]+)\]", texto, re.IGNORECASE))
+            for idx, open_match in enumerate(open_tag_matches):
+                tag_name = _normalize_tag(open_match.group(1))
+                if tag_name not in normalized_tags:
+                    continue
+
+                start = open_match.end()
+                end = open_tag_matches[idx + 1].start() if idx + 1 < len(open_tag_matches) else len(texto)
+                value = texto[start:end].strip(" \t\r\n:-")
+                if value:
+                    return value
 
         return ""
 
