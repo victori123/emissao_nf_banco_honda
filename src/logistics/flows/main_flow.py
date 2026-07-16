@@ -93,10 +93,8 @@ class NBSMainFlow:
             self._move_file_to_output(input_file)
             return
 
-        updated_rows = []
-        processed_count = 0
-        skipped_count = 0
-       
+        row_contexts = []
+
         for row in rows:
             chassis = (row.get("veiculo_chassi") or "").strip()
             ficha_observacao = (row.get("ficha_observacao") or "").strip()
@@ -109,105 +107,42 @@ class NBSMainFlow:
             file_name = (row.get("cliente") or "").strip() + ".pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            row["nbs_etapa_processamento"] = "aguardando_nf_emissao"
 
             if not chassis:
                 logger.warning(f"Linha sem chassis encontrada em {input_file.name}. Pulando.")
                 row["nbs_status"] = "missing_chassis"
                 row["nbs_error"] = "Chassi não encontrado na linha"
-                updated_rows.append(row)
-                skipped_count += 1
+                row["nbs_etapa_processamento"] = "sem_chassi"
+                row_contexts.append({"row": row, "chassis": chassis, "download_path": download_path})
                 continue
-            nf_main_page = ChassisSearchFlow(window)
-            renave = RenaveEmissionFlow(window)
-            try:
-                search_result = None
-                skip_nf_emission = False
+            row_contexts.append(
+                {
+                    "row": row,
+                    "chassis": chassis,
+                    "download_path": download_path,
+                    "ficha_observacao": ficha_observacao,
+                    "ficha_codigo_cfop": ficha_codigo_cfop,
+                    "observacao_nbs": observacao_nbs,
+                    "proposta_nbs": proposta_nbs,
+                    "alienacao_nbs": alienacao_nbs,
+                    "veiculo_seminovo": veiculo_seminovo,
+                    "novo_renavan": novo_renavan,
+                }
+            )
 
-                try:
-                    search_result = nf_main_page.execute(chassis)
-                except Exception as exc:
-                    if self._is_missing_or_emitted_nf_error(exc):
-                        skip_nf_emission = True
-                        row["nbs_status"] = "skipped_nf_emission"
-                        row["nbs_error"] = "NF já emitida ou chassi não localizado na tela de propostas"
-                        logger.info(f"Pulando emissão de NF para chassis {chassis}: {exc}")
-                    else:
-                        raise
+        self._process_nf_emission_stage(row_contexts, window)
+        self._process_renave_stage(row_contexts, window)
+        self._process_print_stage(row_contexts)
 
-                if not skip_nf_emission:
-                    try:
-                        nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
-                        app = Application(backend="uia").connect(handle=nova_handle)
-                        window = app.window(handle=nova_handle)
-                        confirmacao_mensagem = NFEmissionFlow(window).execute(
-                            ficha_observacao,
-                            ficha_codigo_cfop,
-                            observacao_nbs,
-                            proposta_nbs,
-                            alienacao_nbs,
-                            veiculo_seminovo,
-                            novo_renavan)
-
-                        row["nbs_status"] = "success"
-                        row["nbs_error"] = ""
-                        processed_count += 1
-                        if confirmacao_mensagem:
-                            row["nbs_confirmation_message"] = confirmacao_mensagem
-                        if isinstance(search_result, dict):
-                            for key, value in search_result.items():
-                                row[f"nbs_{key}"] = value
-
-                        logger.info(f"Chassis {chassis} processado com sucesso.")
-                    except Exception as exc:
-                        try:
-                            nf_main_page.close_propostas_window()
-                        except Exception:
-                            pass
-                        if self._is_missing_or_emitted_nf_error(exc):
-                            skip_nf_emission = True
-                            row["nbs_status"] = "skipped_nf_emission"
-                            row["nbs_error"] = "NF já emitida ou chassi não localizado na tela de propostas"
-                            logger.info(f"Pulando emissão de NF para chassis {chassis}: {exc}")
-                        else:
-                            raise
-
-                try:
-                    nf_main_page.close_propostas_window()
-                except Exception:
-                    pass
-
-                # Executa renave e registra resultado
-                self._execute_and_record_flow(
-                    row,
-                    "renave",
-                    lambda: renave.execute(chassis),
-                    chassis,
-                    "Erro na emissão do Renave"
-                )
-
-                # Após execução do renave, iniciar fluxo de impressão da NF (PDF)
-                self._execute_and_record_flow(
-                    row,
-                    "print_nf",
-                    lambda: PrintNFFlow().execute(chassis, download_path),
-                    chassis,
-                    "Falha na impressão da NF"
-                )
-
-                if os.path.exists(download_path):
-                    row["nbs_attachment_path"] = str(download_path)
-                    row["nbs_attachment_file_name"] = os.path.basename(download_path)
-                else:
-                    row["nbs_attachment_path"] = ""
-                    row["nbs_attachment_file_name"] = ""
-
-            except Exception as exc:
-                row["nbs_status"] = "failed"
-                row["nbs_error"] = str(exc)[:512]
-                skipped_count += 1
-                logger.error(f"Erro ao processar chassis {chassis}: {exc}", exc_info=True)
-
+        updated_rows = []
+        for context in row_contexts:
+            row = context["row"]
+            self._finalize_row_status(row, context["download_path"])
             updated_rows.append(row)
+
+        processed_count = sum(1 for row in updated_rows if row.get("nbs_status") == "success")
+        skipped_count = len(updated_rows) - processed_count
 
         output_file = DATA_OUTPUT_DIR / input_file.name
         if output_file.exists():
@@ -227,6 +162,131 @@ class NBSMainFlow:
 
         input_file.unlink()
         logger.info(f"Arquivo movido para output: {output_file.name}")
+
+    def _process_nf_emission_stage(self, row_contexts: list[dict], window):
+        for context in row_contexts:
+            row = context["row"]
+            chassis = context["chassis"]
+
+            if not chassis:
+                continue
+
+            row["nbs_etapa_processamento"] = "nf_emissao"
+            nf_main_page = ChassisSearchFlow(window)
+            try:
+                search_result = nf_main_page.execute(chassis)
+                nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
+                app = Application(backend="uia").connect(handle=nova_handle)
+                propostas_window = app.window(handle=nova_handle)
+
+                confirmacao_mensagem = NFEmissionFlow(propostas_window).execute(
+                    context["ficha_observacao"],
+                    context["ficha_codigo_cfop"],
+                    context["observacao_nbs"],
+                    context["proposta_nbs"],
+                    context["alienacao_nbs"],
+                    context["veiculo_seminovo"],
+                    context["novo_renavan"],
+                )
+
+                row["nbs_nf_emission_status"] = "success"
+                row["nbs_nf_emission_message"] = confirmacao_mensagem or ""
+                if isinstance(search_result, dict):
+                    for key, value in search_result.items():
+                        row[f"nbs_{key}"] = value
+                if confirmacao_mensagem:
+                    row["nbs_confirmation_message"] = confirmacao_mensagem
+
+                logger.info(f"Chassis {chassis} processado na etapa de emissão de NF.")
+            except Exception as exc:
+                if self._is_missing_or_emitted_nf_error(exc):
+                    row["nbs_nf_emission_status"] = "skipped"
+                    row["nbs_nf_emission_message"] = "NF já emitida ou chassi não localizado na tela de propostas"
+                    logger.info(f"Pulando emissão de NF para chassis {chassis}: {exc}")
+                else:
+                    row["nbs_nf_emission_status"] = "failed"
+                    row["nbs_nf_emission_message"] = str(exc)[:512]
+                    logger.error(f"Erro na emissão de NF para chassis {chassis}: {exc}", exc_info=True)
+            finally:
+                try:
+                    nf_main_page.close_propostas_window()
+                except Exception:
+                    pass
+
+            row["nbs_etapa_processamento"] = "aguardando_renave"
+
+    def _process_renave_stage(self, row_contexts: list[dict], window):
+        for context in row_contexts:
+            row = context["row"]
+            chassis = context["chassis"]
+
+            if not chassis:
+                continue
+
+            row["nbs_etapa_processamento"] = "renave"
+            renave = RenaveEmissionFlow(window)
+            try:
+                resultado = renave.execute(chassis)
+                row["nbs_renave_message"] = resultado or ""
+                texto = (resultado or "").lower()
+                row["nbs_renave_status"] = "failed" if any(e in texto for e in self.ERRO_INDICADORES) else "success"
+            except Exception as exc:
+                row["nbs_renave_status"] = "failed"
+                row["nbs_renave_message"] = str(exc)[:512]
+                logger.warning(f"Erro na emissão do Renave para chassis {chassis}: {exc}")
+
+            row["nbs_etapa_processamento"] = "aguardando_impressao"
+
+    def _process_print_stage(self, row_contexts: list[dict]):
+        for context in row_contexts:
+            row = context["row"]
+            chassis = context["chassis"]
+            download_path = context["download_path"]
+
+            if not chassis:
+                continue
+
+            row["nbs_etapa_processamento"] = "print_nf"
+            try:
+                resultado = PrintNFFlow().execute(chassis, download_path)
+                row["nbs_print_nf_message"] = resultado or ""
+                texto = (resultado or "").lower()
+                row["nbs_print_nf_status"] = "failed" if any(e in texto for e in self.ERRO_INDICADORES) else "success"
+            except Exception as exc:
+                row["nbs_print_nf_status"] = "failed"
+                row["nbs_print_nf_message"] = str(exc)[:512]
+                logger.warning(f"Falha na impressão da NF para chassis {chassis}: {exc}")
+
+            row["nbs_etapa_processamento"] = "concluido"
+
+    def _finalize_row_status(self, row: dict, download_path: str):
+        if row.get("nbs_status") == "missing_chassis":
+            row.setdefault("nbs_attachment_path", "")
+            row.setdefault("nbs_attachment_file_name", "")
+            return
+
+        stage_statuses = [
+            row.get("nbs_nf_emission_status"),
+            row.get("nbs_renave_status"),
+            row.get("nbs_print_nf_status"),
+        ]
+
+        if any(status == "failed" for status in stage_statuses):
+            row["nbs_status"] = "failed"
+            row.setdefault("nbs_error", "")
+        elif row.get("nbs_nf_emission_status") == "skipped":
+            row["nbs_status"] = "skipped_nf_emission"
+            row.setdefault("nbs_error", "")
+        else:
+            row["nbs_status"] = "success"
+            row["nbs_error"] = ""
+
+        if row.get("nbs_print_nf_status") == "success" and os.path.exists(download_path):
+            row["nbs_attachment_path"] = str(download_path)
+            row["nbs_attachment_file_name"] = os.path.basename(download_path)
+        else:
+            row.setdefault("nbs_attachment_path", "")
+            row.setdefault("nbs_attachment_file_name", "")
 
     def _move_file_to_output(self, input_file: Path):
         output_file = DATA_OUTPUT_DIR / input_file.name
