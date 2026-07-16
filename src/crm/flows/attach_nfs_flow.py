@@ -1,5 +1,7 @@
 from datetime import datetime
 from pathlib import Path
+import shutil
+from typing import Optional
 
 from src.crm.pages.login_page import LoginPage
 from src.crm.pages.main_page import MainPage
@@ -11,6 +13,7 @@ from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
 logger = get_logger(__name__)
+PROCESSED_PDF_DIR = DATA_OUTPUT_DIR / "processado"
 
 
 def get_attachment_rows(csv_path: Path) -> list[dict]:
@@ -33,7 +36,7 @@ def find_attachment_csvs() -> list[Path]:
                 candidates.append(csv_path)
     return candidates
 
-def execution_report_row(input_file: str, total_rows: int, failed_rows: int, message: str = None) -> dict:
+def execution_report_row(input_file: Optional[str], total_rows: int, failed_rows: int, message: Optional[str] = None) -> dict:
     return {
         "data_execucao": datetime.now().strftime("%Y-%m-%d"),
         "hora_inicio": datetime.now().strftime("%H:%M:%S"),
@@ -47,6 +50,17 @@ def execution_report_row(input_file: str, total_rows: int, failed_rows: int, mes
         "mensagem": message or ("Anexação concluída" if failed_rows == 0 else "Alguns anexos falharam"),
         "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
     }
+
+
+def move_pdf_to_processed(pdf_file: Path) -> Path:
+    PROCESSED_PDF_DIR.mkdir(parents=True, exist_ok=True)
+    destination = PROCESSED_PDF_DIR / pdf_file.name
+
+    if destination.exists():
+        destination = PROCESSED_PDF_DIR / f"{pdf_file.stem}_{datetime.now():%Y%m%d_%H%M%S}{pdf_file.suffix}"
+
+    shutil.move(str(pdf_file), str(destination))
+    return destination
 
 def run(driver) -> list[str]:
     logger.info("=== START: attach_nfs_flow ===")
@@ -80,8 +94,8 @@ def run(driver) -> list[str]:
         for row in rows:
             total_rows += 1
             pdf_path = row.get("nbs_attachment_path") or row.get("attachment_path")
-            chassi = row.get("veiculo_chassi")
-            numero_evento = row.get("numero")
+            chassi = str(row.get("veiculo_chassi") or "")
+            numero_evento = str(row.get("numero") or "")
             if not pdf_path:
                 continue
 
@@ -97,6 +111,13 @@ def run(driver) -> list[str]:
                 crm_auto_page.attach_pdf_to_current_opportunity(str(pdf_file), chassi, numero_evento)
                 crm_auto_page.close_opened_tabs_after_attachment()
                 update_attachment_result(row, "success")
+                try:
+                    processed_pdf = move_pdf_to_processed(pdf_file)
+                    row["nbs_attachment_path"] = str(processed_pdf)
+                    logger.info("PDF movido para processado: %s", processed_pdf)
+                except Exception as move_exc:
+                    row["crm_attachment_error"] = f"Anexo concluido; falha ao mover PDF: {str(move_exc)[:256]}"
+                    logger.warning("Falha ao mover PDF %s para processado: %s", pdf_file, move_exc)
                 attached_files.append(pdf_file.name)
             except Exception as exc:
                 update_attachment_result(row, "failed", str(exc)[:512])
