@@ -319,6 +319,17 @@ class CrmAutoPage(BaseCRMPage):
 
         normalized_tags = {_normalize_tag(tag) for tag in tag_names}
         tag_pattern = "|".join(sorted((re.escape(tag) for tag in normalized_tags), key=len, reverse=True))
+        known_tag_aliases = {
+            "CFOP",
+            "RENAVAN",
+            "OBSERVACAO",
+            "OBS",
+            "ALIENACAO",
+            "PROPOSTA",
+            "SEMINOVO",
+            "SEMINOVA",
+        }
+        any_tag_pattern = "|".join(sorted((re.escape(tag) for tag in (normalized_tags | known_tag_aliases)), key=len, reverse=True))
 
         for obs in observacoes:
             texto = str(obs.get("Observação", "") or "")
@@ -347,9 +358,10 @@ class CrmAutoPage(BaseCRMPage):
             normalized_text = "".join(ch for ch in normalized_text if not unicodedata.combining(ch)).upper()
 
             textual_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{tag_pattern})\s*[:\-]\s*", re.IGNORECASE)
+            any_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{any_tag_pattern})\s*[:\-]\s*", re.IGNORECASE)
             for tag_match in textual_tag_regex.finditer(normalized_text):
                 start = tag_match.end()
-                next_tag = textual_tag_regex.search(normalized_text, start)
+                next_tag = any_tag_regex.search(normalized_text, start)
                 end = next_tag.start() if next_tag else len(normalized_text)
                 value = texto[start:end].strip(" \t\r\n:-")
                 if value:
