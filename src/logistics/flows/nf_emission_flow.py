@@ -7,7 +7,7 @@ class NFEmissionFlow:
     def __init__(self, window):
         self.page = NFEmissionPage(window)
 
-    def execute(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", proposta_nbs: str = "", alienacao_nbs: str = "", veiculo_seminovo: str = "", renavan: str=""):
+    def execute(self, ficha_observacao: str = "", ficha_codigo_cfop: str = "", observacao_nbs: str = "", proposta_nbs: str = "", alienacao_nbs: str = "", veiculo_seminovo: bool = False, renavan: str=""):
 
         logger.info("Iniciando emissão de NF")
 

@@ -1,4 +1,6 @@
 from src.shared.utils.logger import get_logger
+from pywinauto import Desktop
+from time import sleep
 
 logger = get_logger(__name__)
 
@@ -6,7 +8,39 @@ class LoginPage:
     def __init__(self, window):
         self.window = window
 
-    
+    def _capturar_mensagem_popup(self, title):
+        try:
+            popup = None
+            sleep(3)
+            popup = Desktop(backend="uia").window(title_re=title)
+
+            try:
+                popup.wait("visible", timeout=5)
+            except:
+                popup = Desktop().window(title_re=title)
+                popup.wait("visible", timeout=5)
+
+            wrapper = popup.wrapper_object()
+            popup.set_focus()
+            textos = []
+
+            # 1. tenta pegar do próprio popup
+            if popup.window_text().strip():
+                textos.append(popup.window_text().strip())
+
+            # 2. pega todos os descendentes
+            for ctrl in wrapper.descendants():
+                txt = ctrl.window_text().strip()
+                if txt:
+                    textos.append(txt)
+
+            texto = " ".join(textos)
+        
+            return texto, popup
+
+        except Exception as e:
+            return "", ""
+
     def login(self, user, password, server):
         logger.info("Iniciando login (painéis detectados)")
 
@@ -41,6 +75,14 @@ class LoginPage:
             self.window.type_keys("{ENTER}")
 
             logger.info("Login enviado com ENTER")
+
+            mensagem, popup = self._capturar_mensagem_popup(title=".*Informação*")
+            if mensagem:
+                logger.warning(f"Mensagem identificada: {mensagem}")
+                ok_button = popup.child_window(title="OK", control_type="Button")
+                popup.set_focus()
+                ok_button.click_input()
+            
 
         except Exception as e:
             logger.error("Erro no login", exc_info=True)

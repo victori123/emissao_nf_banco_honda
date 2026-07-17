@@ -13,10 +13,42 @@ class PrintNFPage:
     def __init__(self, window):
         self.window = window
         self.app = None
+        
+    def is_logged(self):
+
+        try:
+            logger.info("Validando sucesso do login")
+
+            # percorre toda a aplicação e não só a janela atual
+            elements = self.window.app.windows()
+   
+            for el in elements:
+                try:
+                    name = el.element_info.name
+
+                    if name and "Nota Fiscal (Saída)" in name:
+                        logger.info("Login confirmado (NBS Nota Fiscal (Saída) encontrado)")
+                        return True
+
+                except Exception:
+                    continue
+
+
+            logger.warning("Nota Fiscal (Saída) não encontrado em nenhuma janela")
+            return False
+
+        except Exception as e:
+            logger.error("Erro ao validar login", exc_info=True)
+            return False
+
 
     def login_to_server(self, user: str, password: str, server: str):
-        logger.info("Abrindo servidor de impressão: %s", server)
 
+        if self.is_logged():
+            logger.info("Servidor já está aberto: %s", server)
+            return
+
+        logger.info("Abrindo servidor de impressão: %s", server)
         try:
             self.window.set_focus()
             self.window.wait("ready", timeout=20)
@@ -39,7 +71,12 @@ class PrintNFPage:
 
             edits[0].click_input()
             self.window.type_keys("{ENTER}")
-            sleep(2)
+            sleep(3)
+            mensagem, popup = self._capturar_mensagem_popup(title=".*Informa*")
+            if mensagem:
+                logger.info(f"Mensagem identificada: {mensagem}")
+                ok_button = popup.child_window(title="OK")
+                ok_button.click_input()
 
             self.comunicado_click_sair("Notas Fiscais Ativas.*")
 
@@ -51,20 +88,22 @@ class PrintNFPage:
             logger.error("Erro ao abrir/efetuar login no servidor de impressão", exc_info=True)
             raise
 
-    def comunicado_click_sair(self, titulo_janela, timeout=20):
+    def comunicado_click_sair(self, titulo_janela, timeout=6):
         desktop = Desktop(backend="win32")
         # Aguarda a janela aparecer
         janela = desktop.window(title_re=titulo_janela)
         janela.wait("visible enabled ready", timeout=timeout)
         janela.set_focus()
-        botao_sair = janela.child_window(
-            title="Sair",
-        )
-        botao_sair.wait("visible enabled ready", timeout=timeout)
-        botao_sair.click_input()
+        try:
+            botao_sair = janela.child_window(
+                title="Sair",
+            )
+            botao_sair.wait("visible enabled ready", timeout=timeout)
+            botao_sair.click_input()
+        except:
+            pass
 
         popup = Desktop(backend="uia").window(title_re=".*NBS-Controle de Notas.*")
-        popup.wait("visible enabled ready", timeout=timeout)
         ok_button = popup.child_window(title="OK")
         ok_button.click_input()
 
@@ -112,6 +151,27 @@ class PrintNFPage:
             self.window.set_focus()
             panes = self.window.descendants(control_type="Pane")
             edits = self.window.descendants(control_type="Edit")
+
+            consultar_btn = panes[10]
+            rect = consultar_btn.rectangle()
+            width = rect.right - rect.left
+            height = rect.bottom - rect.top    
+            
+            # click em limpar por posição  
+            x_rel = int(width / 2)
+            y_rel = int(height * 0.40)
+            consultar_btn.click_input(coords=(x_rel, y_rel))
+
+            # click em data inicial
+            self.window.set_focus()
+            data_hoje = panes[11]
+            rect = data_hoje.rectangle()
+            width = rect.right - rect.left
+            height = rect.bottom - rect.top
+            x_rel = int(width / 3)
+            y_rel = int(height * 0.10)
+            data_hoje.click_input(coords=(x_rel, y_rel))
+                        
             empresa_field = edits[2]
             self.limpar_filtro(empresa_field)
             if not panes:
@@ -120,26 +180,31 @@ class PrintNFPage:
             campo_chassi = panes[27]
             campo_chassi.click_input()
             campo_chassi.type_keys(chassis, with_spaces=True)
-
-            consultar_btn = panes[10]
-            imprimir_nf = panes[7]
-
-            if consultar_btn:
-
-                rect = consultar_btn.rectangle()
-
-                width = rect.right - rect.left
-                height = rect.bottom - rect.top
-
-                x_rel = int(width / 2)
-                y_rel = int(height * 0.20)
-
-                consultar_btn.click_input(coords=(x_rel, y_rel))
-                sleep(3)
-                logger.info(f"Clicou em consultar")
-            else:
-                raise Exception("Botão consultar não encontrado")
             
+            self.window.set_focus()
+            combos = self.window.descendants(control_type="ComboBox")
+            combo_filtros = combos[1]
+            combo_filtros.select("10 - Autorizada")
+            
+            self.window.set_focus()
+            combo_operacoes = edits[1]
+            combo_operacoes.click_input()
+            self.window.type_keys("Venda Veiculos Novos", with_spaces=True)
+            self.window.type_keys("{ENTER}")
+
+            #clicar em consultar por posição
+            consultar_btn = panes[10]
+            rect = consultar_btn.rectangle()
+            width = rect.right - rect.left
+            height = rect.bottom - rect.top  
+            x_rel = int(width / 2)
+            y_rel = int(height * 0.20)
+
+            consultar_btn.click_input(coords=(x_rel, y_rel))
+            sleep(3)
+            logger.info(f"Clicou em consultar")
+
+            imprimir_nf = panes[7]
             rect = imprimir_nf.rectangle()
             width = rect.right - rect.left
             height = rect.bottom - rect.top
@@ -206,6 +271,7 @@ class PrintNFPage:
                     popup = Desktop().window(title_re=title)
                     popup.wait("visible", timeout=3)
 
+                popup.set_focus()
                 wrapper = popup.wrapper_object()
 
                 textos = []

@@ -33,7 +33,8 @@ class PrintNFFlow:
         except Exception:
             logger.error("Erro no PrintNFFlow", exc_info=True)
             raise
-        finally:
+    
+    def close_print_window(self):
             try:
                 # garante fechamento/exit do servidor de impressão
                 self.page.close(force=True)

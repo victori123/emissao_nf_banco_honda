@@ -254,7 +254,7 @@ class RenaveEmissionPage:
                     if not mensagem_erro:
                         break
                     logger.warning(f"Erro identificado na tentativa {tentativa + 1}/3: {mensagem_erro}. Tentando novamente...")
-                    ok_button = popup.child_window(title="OK", control_type="Button")
+                    ok_button = popup.child_window(title="OK")
                     ok_button.click_input()
                 except Exception as e:
                     logger.warning(f"Falha no clique da operação selecionada na tentativa {tentativa + 1}/3: {e}. Tentando novamente...")
