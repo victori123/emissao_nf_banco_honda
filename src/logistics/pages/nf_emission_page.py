@@ -130,7 +130,8 @@ class NFEmissionPage:
         app = Application(backend="uia").connect(title_re=".*Venda.*", timeout=15)
         dlg = app.window(title_re=".*Venda.*")
         dlg.wait("visible", timeout=15)
-
+        edits = self.window.children(control_type="Edit")
+        
         #nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Venda" in w.window_text()), None)  
         #app = Application(backend="uia").connect(handle=nova_handle)
         self.window = dlg
@@ -153,43 +154,55 @@ class NFEmissionPage:
         
         aba_corpo_nota_fiscal.click_input()
         sleep(2)
-        painel_incluir = self.window.descendants(control_type="Pane")[-1]
-        self.window.set_focus()
-        send_keys("{TAB}")
         
-        send_keys("^a")  # CTRL + A
-        send_keys("^c")  # CTRL + C
+        self.window.set_focus()
 
-        texto = pyperclip.paste()
+        texto_da_nota_field = self.window.descendants(control_type="Edit")[1]
+        texto_da_nota_field.click_input()
+
         if alienacao_nbs:
+            texto_da_nota_field.type_keys("^a")  # CTRL + A
+            texto_da_nota_field.type_keys("^c")  # CTRL + C
+            texto = pyperclip.paste()
             texto += alienacao_nbs
-        if veiculo_seminovo:
-            texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
-
-        pyperclip.copy(texto)  # copia com acentos para o clipboard
-        sleep(1)
-        send_keys("^v") # Ctrl+V
-        send_keys("{TAB 2}")
-                    
-        if proposta_nbs:
-            
-            send_keys("{ENTER}")
-            send_keys("{UP}")
-            pyperclip.copy(f"Proposta: {proposta_nbs}")  # copia com acentos para o clipboard
+            pyperclip.copy(texto)
             sleep(1)
-            send_keys("^v") # Ctrl+V
-
-        self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
-
-        send_keys("+{TAB}")
+            texto_da_nota_field.type_keys("^v")
+        
         if veiculo_seminovo:
-            # Opcao CONFORME DETERMINAM ARTS.120, 123, PARAGRAFO PRIMEIRO  E 134, TODOS DO CODIGO DE TRANSITO BRASILEIRO, O PRAZO PARA TRANSFERENCIA  DE 30 DIAS DA AQUISICAO DO VEICULO .
-            send_keys("{DOWN 4}")
-        else:
-            # Opcao CONFORME DETERMINAM ARTS.120 E 123, PARAGRAFO PRIMEIRO AMBOS DO CODIGO DE TRANSITO BRASILEIRO, OPRAZO PARA EMPLACAMENTO DE 30 DIAS A CONTAR DA EMISSAO DA NFE SOB PENA DE PERDER A ISENCAO DO IPVA
-            send_keys("{DOWN 3}")
-
+            texto_da_nota_field.type_keys("^a")  # CTRL + A
+            texto_da_nota_field.type_keys("^c")
+            texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
+            pyperclip.copy(texto)
+            sleep(1)
+            texto_da_nota_field.type_keys("^v")
+        
+        self.window.set_focus()
+        painel_incluir = self.window.descendants(control_type="Pane")[-1]
         self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
+
+        campo_frases = self.window.descendants(control_type="Pane")[4]
+        if veiculo_seminovo:
+            campo_frases.click_input()
+            campo_frases.type_keys("{UP 30}")
+            # Opcao CONFORME DETERMINAM ARTS.120, 123, PARAGRAFO PRIMEIRO  E 134, TODOS DO CODIGO DE TRANSITO BRASILEIRO, O PRAZO PARA TRANSFERENCIA  DE 30 DIAS DA AQUISICAO DO VEICULO .
+            campo_frases.type_keys("{DOWN 4}")
+        else:
+            campo_frases.click_input()
+            campo_frases.type_keys("{UP 30}")
+            # Opcao CONFORME DETERMINAM ARTS.120 E 123, PARAGRAFO PRIMEIRO AMBOS DO CODIGO DE TRANSITO BRASILEIRO, OPRAZO PARA EMPLACAMENTO DE 30 DIAS A CONTAR DA EMISSAO DA NFE SOB PENA DE PERDER A ISENCAO DO IPVA
+            campo_frases.type_keys("{DOWN 3}")
+
+        self.window.set_focus()
+        painel_incluir = self.window.descendants(control_type="Pane")[-1]
+        self.clicar_opcoes_incluir(painel_incluir, abaixo=True)
+
+        if proposta_nbs:
+            # campo complemento
+            complemento_field = self.window.descendants(control_type="Edit")[0]
+            complemento_field.click_input()
+            complemento_field.type_keys("{DOWN 30}")
+            complemento_field.type_keys(f"Proposta: {proposta_nbs}", with_spaces=True)  # copia com acentos para o clipboard
 
         aba_dados_nota_fiscal.click_input()
         observacao = self.window.descendants(control_type="Edit")[-1]
@@ -243,6 +256,7 @@ class NFEmissionPage:
 
 
     def clicar_opcoes_incluir(self, pane, acima=False, abaixo=False):
+        self.window.set_focus()
         rect = pane.rectangle()
 
         largura = rect.right - rect.left
