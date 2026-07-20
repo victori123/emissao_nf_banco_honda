@@ -102,10 +102,14 @@ class PrintNFPage:
             botao_sair.click_input()
         except:
             pass
-
+        
+        sleep(2)
         popup = Desktop(backend="uia").window(title_re=".*NBS-Controle de Notas.*")
         ok_button = popup.child_window(title="OK")
-        ok_button.click_input()
+        try:
+            ok_button.click_input()
+        except:
+            pass
 
         return True
 

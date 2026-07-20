@@ -56,6 +56,24 @@ class NFEmissionPage:
         if "A nota fiscal será emitida para o cliente" not in mensagem:
             raise Exception(mensagem)
         
+        popup = self.window.child_window(
+            title="Informação",
+            control_type="Window"
+        )
+
+        if popup.exists(timeout=2):
+            wrapper = popup.wrapper_object()
+
+            mensagem = " ".join(
+                t.window_text()
+                for t in wrapper.descendants(control_type="Text")
+                if t.window_text()
+            )
+            logger.info(mensagem)
+            popup.child_window(title="Não").click_input()
+
+
+        
     
     def reduzir_texto(self, texto: str, limite: int = 500) -> str:
         if not texto:

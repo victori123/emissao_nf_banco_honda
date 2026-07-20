@@ -228,6 +228,8 @@ class NBSMainFlow:
             row["nbs_etapa_processamento"] = "aguardando_renave"
 
     def _process_renave_stage(self, row_contexts: list[dict], window):
+        renave = RenaveEmissionFlow(window)
+        renave.page.clicar_renave()
         for context in row_contexts:
             row = context["row"]
             chassis = context["chassis"]
@@ -236,7 +238,6 @@ class NBSMainFlow:
                 continue
 
             row["nbs_etapa_processamento"] = "renave"
-            renave = RenaveEmissionFlow(window)
             try:
                 resultado = renave.execute(chassis)
                 row["nbs_renave_message"] = resultado or ""
@@ -248,6 +249,8 @@ class NBSMainFlow:
                 logger.warning(f"Erro na emissão do Renave para chassis {chassis}: {exc}")
 
             row["nbs_etapa_processamento"] = "aguardando_impressao"
+
+        renave.page.close()
 
     def _process_print_stage(self, row_contexts: list[dict]):
         print_flow = PrintNFFlow()
