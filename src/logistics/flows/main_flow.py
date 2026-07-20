@@ -138,7 +138,7 @@ class NBSMainFlow:
             alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
             veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
             novo_renavan = (row.get("renvam_informado") or "").strip()
-            file_name = (row.get("cliente") or "").strip() + ".pdf"
+            file_name = (row.get("cliente") or "").strip() + f"_{chassis[-4:]}.pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             row["nbs_etapa_processamento"] = "aguardando_nf_emissao"
