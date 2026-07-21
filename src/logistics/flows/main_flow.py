@@ -55,11 +55,30 @@ class NBSMainFlow:
                 mensagem="Sem arquivo para processamento",
             )
             return
-        
-        self.window = self.session.start()
-        LoginFlow(self.window).execute(self.user, self.password, self.server)
-        for input_file in input_files:
-            self._process_csv_file(input_file, self.window)
+
+        try:
+            self.window = self.session.start()
+            LoginFlow(self.window).execute(self.user, self.password, self.server)
+            for input_file in input_files:
+                self._process_csv_file(input_file, self.window)
+        finally:
+            self._close_nbs_application()
+
+    def _close_nbs_application(self):
+        try:
+            if self.window is not None:
+                self.window.close()
+        except Exception as exc:
+            logger.warning(f"Falha ao fechar janela principal do NBS: {exc}")
+
+        try:
+            app = getattr(getattr(self.session, "driver", None), "app", None)
+            if app and app.is_process_running():
+                app.kill(soft=False)
+        except Exception as exc:
+            logger.warning(f"Falha ao encerrar processo do NBS: {exc}")
+        finally:
+            self.window = None
 
     @staticmethod
     def _is_missing_or_emitted_nf_error(exc: Exception) -> bool:
