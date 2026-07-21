@@ -138,7 +138,7 @@ class NBSMainFlow:
             alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
             veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
             novo_renavan = (row.get("renvam_informado") or "").strip()
-            file_name = (row.get("cliente") or "").strip() + ".pdf"
+            file_name = (row.get("cliente") or "").strip() + f"_{chassis[-4:]}.pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
             row["nbs_processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             row["nbs_etapa_processamento"] = "aguardando_nf_emissao"
@@ -228,6 +228,8 @@ class NBSMainFlow:
             row["nbs_etapa_processamento"] = "aguardando_renave"
 
     def _process_renave_stage(self, row_contexts: list[dict], window):
+        renave = RenaveEmissionFlow(window)
+        renave.page.clicar_renave()
         for context in row_contexts:
             row = context["row"]
             chassis = context["chassis"]
@@ -236,7 +238,6 @@ class NBSMainFlow:
                 continue
 
             row["nbs_etapa_processamento"] = "renave"
-            renave = RenaveEmissionFlow(window)
             try:
                 resultado = renave.execute(chassis)
                 row["nbs_renave_message"] = resultado or ""
@@ -248,6 +249,8 @@ class NBSMainFlow:
                 logger.warning(f"Erro na emissão do Renave para chassis {chassis}: {exc}")
 
             row["nbs_etapa_processamento"] = "aguardando_impressao"
+
+        renave.page.close()
 
     def _process_print_stage(self, row_contexts: list[dict]):
         print_flow = PrintNFFlow()

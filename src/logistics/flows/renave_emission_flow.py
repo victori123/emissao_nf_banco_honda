@@ -12,7 +12,6 @@ class RenaveEmissionFlow:
         logger.info("Iniciando emissão de Renave")
 
         try:
-            self.page.clicar_renave()
             mensagem = self.page.processar_operacao(chassi)
             if mensagem:
                 logger.info("Mensagem de confirmação de Renave: %s", mensagem)
@@ -23,8 +22,3 @@ class RenaveEmissionFlow:
         except Exception:
             logger.error("Erro na emissão da Renave", exc_info=True)
             raise
-        finally:
-            try:
-                self.page.close()
-            except Exception:
-                logger.warning("Falha ao fechar a tela de Renave após a tentativa", exc_info=True)

@@ -58,8 +58,17 @@ class CrmAutoPage(BaseCRMPage):
     _CHASSI_TEXT_FIELD = (By.XPATH, '//input-search//input[@type="text"]')
     _PESQUISAR_EVENTO_BUTTON = (By.XPATH, '//button[.//span[contains(@class,"pi-sync")]]')
     
-    _CLEAR_BUTTON = (By.XPATH, "//i[contains(@class, 'p-dropdown-clear-icon') and contains(@class, 'pi-times')]")
+    
+    _CLEAR_BUTTON = (
+        By.CSS_SELECTOR,
+        "i.p-dropdown-clear-icon"
+    )
 
+    _CLEAR_STATUS_BUTTON = (
+        By.CSS_SELECTOR,
+        "i.p-dropdown-clear-icon"
+    )
+    
     _MESA_FI_TAB = (
         By.XPATH,
         '//a[@role="tab"][.//span[contains(text(),"Mesa F&I")]]'
@@ -103,8 +112,21 @@ class CrmAutoPage(BaseCRMPage):
 
     def attach_pdf_to_current_opportunity(self, pdf_path: str, chassi: str, numero_evento: str) -> None:
         self.logger.info("Attachment step for path: %s", pdf_path)
+        self.find_clickable(*self._PESQUISAR_EVENTO_LUPA)
         self.click(*self._PESQUISAR_EVENTO_LUPA)
-        #self.click(*self._CLEAR_BUTTON)
+        self.sleep_withou_condition(2)
+        try:
+            element = self.driver.find_element(*self._CLEAR_BUTTON)
+            self.driver.execute_script("arguments[0].click();", element)
+        except:
+            pass
+
+        try:
+            element = self.driver.find_element(*self._CLEAR_STATUS_BUTTON)
+            self.driver.execute_script("arguments[0].click();", element)
+        except:
+            pass
+        
         self.click(*self._CHASSI_CHECKBOX_BUTTON)
         self.fill(*self._CHASSI_TEXT_FIELD, chassi)
         self.click(*self._PESQUISAR_EVENTO_BUTTON)
@@ -119,7 +141,6 @@ class CrmAutoPage(BaseCRMPage):
 
         self.click(*self._INCLUIR_BUTTON)
 
-        
         dropdown = self.wait.until(EC.element_to_be_clickable((
                 By.XPATH,
                 '//label[normalize-space()="Tipo Documento"]/ancestor::span//div[contains(@class,"p-dropdown")]'
@@ -138,7 +159,9 @@ class CrmAutoPage(BaseCRMPage):
         self.enviar_documento(pdf_path)
 
         self.click(*self._SALVAR_BUTTON)
-        
+
+        self.sleep_withou_condition(3)
+       
         return "Sucesso"
     
     def close_opened_tabs_after_attachment(self) -> None:

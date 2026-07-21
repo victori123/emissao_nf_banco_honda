@@ -213,9 +213,9 @@ class RenaveEmissionPage:
             #encontra o painel (fallback: pega qualquer panel visível)
             panels = self.window.descendants(control_type="Pane")
             tabela_integracoes = panels[13]
-            tabela_integracoes.click_input()
             sleep(0.5)
             #seleciona todos os registros
+            tabela_integracoes.click_input()
             tabela_integracoes.type_keys("^a")
             #copia
             tabela_integracoes.type_keys("^c")
@@ -249,6 +249,8 @@ class RenaveEmissionPage:
             for tentativa in range(3):
                 try:
                     logger.info(f"Clicando em operação selecionada (tentativa {tentativa + 1}/3)")
+                    tabela_integracoes.click_input()
+                    tabela_integracoes.type_keys("^a")
                     botao_operacao_selecionada.click_input()
                     mensagem_erro, popup = self._capturar_mensagem_popup_erro(title=".*Informação*")
                     if not mensagem_erro:
