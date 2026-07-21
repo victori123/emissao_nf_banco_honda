@@ -73,7 +73,7 @@ class PrintNFPage:
             self.window.type_keys("{ENTER}")
             sleep(3)
             mensagem, popup = self._capturar_mensagem_popup(title=".*Informa*")
-            if mensagem:
+            if mensagem and popup is not None:
                 logger.info(f"Mensagem identificada: {mensagem}")
                 ok_button = popup.child_window(title="OK")
                 ok_button.click_input()
@@ -104,14 +104,51 @@ class PrintNFPage:
             pass
         
         sleep(2)
-        popup = Desktop(backend="uia").window(title_re=".*NBS-Controle de Notas.*")
-        ok_button = popup.child_window(title="OK")
-        try:
-            ok_button.click_input()
-        except:
-            pass
+        self._click_ok_on_popup(".*NBS-Controle de Notas.*", timeout=timeout)
 
         return True
+
+    def _click_ok_on_popup(self, title_re, timeout=6, retries=3):
+        for tentativa in range(1, retries + 1):
+            popup = None
+            ok_button = None
+            try:
+                try:
+                    popup = Desktop(backend="uia").window(title_re=title_re)
+                    popup.wait("visible enabled ready", timeout=timeout)
+                except Exception:
+                    popup = Desktop(backend="win32").window(title_re=title_re)
+                    popup.wait("visible enabled ready", timeout=timeout)
+
+                popup.set_focus()
+
+                ok_button = popup.child_window(title="OK", control_type="Button")
+                ok_button.wait("visible enabled ready", timeout=timeout)
+
+                try:
+                    ok_button.click_input()
+                except Exception:
+                    # Alguns popups aceitam melhor click() ou ENTER do que click_input().
+                    try:
+                        ok_button.click()
+                    except Exception:
+                        popup.type_keys("{ENTER}")
+
+                logger.info("Popup confirmado com sucesso (tentativa %s)", tentativa)
+                return True
+
+            except Exception:
+                logger.warning(
+                    "Falha ao confirmar popup '%s' na tentativa %s/%s",
+                    title_re,
+                    tentativa,
+                    retries,
+                    exc_info=True,
+                )
+                sleep(1)
+
+        logger.warning("Nao foi possivel confirmar popup '%s' apos %s tentativas", title_re, retries)
+        return False
 
 
     def close(self, force: bool = False):
@@ -130,7 +167,8 @@ class PrintNFPage:
 
             if force or (self.app is not None):
                 try:
-                    self.app.kill()
+                    if self.app is not None:
+                        self.app.kill()
                 except Exception:
                     pass
 
@@ -218,8 +256,9 @@ class PrintNFPage:
             mensagem_atencao = None
             try:
                 mensagem_atencao, janela_atencao = self._capturar_mensagem_popup(title=".*Informação.*")
-                ok_button = janela_atencao.child_window(title="OK")
-                ok_button.click_input()
+                if janela_atencao is not None:
+                    ok_button = janela_atencao.child_window(title="OK")
+                    ok_button.click_input()
             except:
                 pass
             
