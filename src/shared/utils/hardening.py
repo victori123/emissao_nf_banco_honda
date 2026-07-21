@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -60,6 +61,35 @@ def _expand_selected_bots(selected_bots: list[str]) -> set[str]:
     return bots
 
 
+def _resolve_windows_executable(raw_path: str) -> Path | None:
+    """Resolve executable path on Windows, accepting paths without extension."""
+    candidate = Path(raw_path)
+
+    # Accept exact file path when it already exists.
+    if candidate.is_file():
+        return candidate
+
+    # If a full path is provided without extension, try executable suffixes.
+    if not candidate.suffix:
+        for suffix in (".exe", ".bat", ".cmd", ".com"):
+            with_suffix = candidate.with_suffix(suffix)
+            if with_suffix.is_file():
+                return with_suffix
+
+    # Fallback to PATH search, keeping Windows executable suffix behavior.
+    resolved = os.path.normpath(os.path.expandvars(raw_path))
+    found = None
+    if os.name == "nt":
+        found = shutil.which(resolved)
+    else:
+        found = shutil.which(raw_path)
+
+    if found:
+        return Path(found)
+
+    return None
+
+
 def validate_runtime_requirements(selected_bots: list[str]) -> None:
     bots = _expand_selected_bots(selected_bots)
     errors: list[str] = []
@@ -93,10 +123,19 @@ def validate_runtime_requirements(selected_bots: list[str]) -> None:
         if not LogisticsCredentials.NFS_SERVER:
             errors.append("Variável LOGISTICS_NFS_SERVER ausente.")
 
-        if not Path(LOGISTICS_BASE_SERVER).exists():
-            errors.append(f"Caminho LOGISTICS_BASE_SERVER não encontrado: {LOGISTICS_BASE_SERVER}")
-        if not Path(LOGISTICS_NFS_SERVER).exists():
-            errors.append(f"Caminho LOGISTICS_NFS_SERVER não encontrado: {LOGISTICS_NFS_SERVER}")
+        resolved_base_server = _resolve_windows_executable(LOGISTICS_BASE_SERVER)
+        resolved_nfs_server = _resolve_windows_executable(LOGISTICS_NFS_SERVER)
+
+        if resolved_base_server is None:
+            errors.append(
+                "Caminho LOGISTICS_BASE_SERVER inválido ou executável não encontrado "
+                f"(incluindo tentativa com extensões .exe/.bat/.cmd/.com): {LOGISTICS_BASE_SERVER}"
+            )
+        if resolved_nfs_server is None:
+            errors.append(
+                "Caminho LOGISTICS_NFS_SERVER inválido ou executável não encontrado "
+                f"(incluindo tentativa com extensões .exe/.bat/.cmd/.com): {LOGISTICS_NFS_SERVER}"
+            )
 
         if not is_interactive:
             errors.append("Fluxo de logística requer sessão interativa do Windows (desktop desbloqueado).")
