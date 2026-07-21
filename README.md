@@ -140,6 +140,49 @@ python main.py --bot crm logistics
 python main.py --bot logistics crm-attach
 ```
 
+## Hardening para Task Scheduler (Windows Server)
+
+A aplicação possui validações de preflight e trava de execução única no `main.py`.
+
+O que é validado antes da execução:
+
+- presença do `.env` na raiz do projeto
+- credenciais obrigatórias para os bots selecionados
+- permissão de escrita em `data/input`, `data/output` e `data/logs`
+- sessão interativa ativa para fluxos desktop (`logistics`)
+- modo não-headless do CRM somente com sessão interativa
+- existência dos caminhos configurados em `LOGISTICS_BASE_SERVER` e `LOGISTICS_NFS_SERVER`
+
+Também foi adicionada trava anti-concorrência:
+
+- lockfile em `data/logs/locks/rpa_runner.lock`
+- limpeza automática de lock antigo com base em `HARDENING_LOCK_TTL_HOURS` (padrão 12)
+
+### Script recomendado para agendamento
+
+Arquivo: `scripts/task_scheduler_bootstrap.ps1`
+
+Exemplo de execução manual:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\task_scheduler_bootstrap.ps1 -Bot all
+```
+
+Esse script:
+
+- força o diretório de trabalho para a raiz do projeto
+- ativa a virtualenv (`.venv`)
+- executa `python main.py --bot <bot>`
+- registra `stdout`/`stderr` em `data/logs/scheduler`
+
+### Configuração recomendada da tarefa
+
+- Program/script: `powershell.exe`
+- Arguments: `-ExecutionPolicy Bypass -File "C:\caminho\projeto\scripts\task_scheduler_bootstrap.ps1" -Bot all`
+- Start in: `C:\caminho\projeto`
+- Marcar para não executar instâncias paralelas da mesma tarefa
+- Para `logistics`, executar somente com usuário logado e desktop desbloqueado
+
 ## Entradas e saídas
 
 ### CRM

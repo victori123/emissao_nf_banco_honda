@@ -2,6 +2,11 @@ import argparse
 import sys
 from datetime import datetime
 from src.shared.utils.execution_report import append_execution_report
+from src.shared.utils.hardening import (
+    acquire_single_instance_lock,
+    release_single_instance_lock,
+    validate_runtime_requirements,
+)
 from src.shared.utils.logger import get_logger
 from config.settings import LOGS_DIR
 
@@ -41,9 +46,12 @@ def run_logistics():
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    lock_path = None
 
     logger.info(f"Starting RPA — bot: {args.bot}")
     try:
+        validate_runtime_requirements(args.bot)
+        lock_path = acquire_single_instance_lock("rpa_runner")
 
         if "all" in args.bot or "crm" in args.bot:
             run_crm()
@@ -90,6 +98,8 @@ def main():
             LOGS_DIR / "execution_report.csv",
         )
         sys.exit(1)
+    finally:
+        release_single_instance_lock(lock_path)
 
 
 if __name__ == "__main__":
