@@ -6,13 +6,13 @@ class ChassisSearchFlow:
     def __init__(self, window):
         self.page = ChassisSearchPage(window)
 
-    def execute(self, chassis):
+    def execute(self, chassis, veiculo_seminovo:bool=False):
 
         logger.info(f"Buscando chassis: {chassis}")
 
         try:
             self.page.clicar_propostas()
-            result = self.page.search(chassis)
+            result = self.page.search(chassis, veiculo_seminovo)
             logger.info("Chassis localizado com sucesso")
             return result
 

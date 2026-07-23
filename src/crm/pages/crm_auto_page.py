@@ -113,7 +113,11 @@ class CrmAutoPage(BaseCRMPage):
     def attach_pdf_to_current_opportunity(self, pdf_path: str, chassi: str, numero_evento: str) -> None:
         self.logger.info("Attachment step for path: %s", pdf_path)
         self.find_clickable(*self._PESQUISAR_EVENTO_LUPA)
-        self.click(*self._PESQUISAR_EVENTO_LUPA)
+        try:
+            self.click(*self._PESQUISAR_EVENTO_LUPA)
+        except:
+            self.sleep_withou_condition(2)
+            self.click(*self._PESQUISAR_EVENTO_LUPA)
         self.sleep_withou_condition(2)
         try:
             element = self.driver.find_element(*self._CLEAR_BUTTON)

@@ -76,7 +76,7 @@ class ChassisSearchPage:
             return None
 
 
-    def search(self, chassis: str)-> dict[any]:
+    def search(self, chassis: str, veiculo_seminovo:False)-> dict[any]:
         try:
             logger.info(f"Iniciando busca por chassis {chassis}")
             dados_encontrado = {}
@@ -102,6 +102,15 @@ class ChassisSearchPage:
             send_keys(str(chassis))
             logger.info(f"Digitou o chassis: {chassis}")
 
+            if veiculo_seminovo:
+                self.window.set_focus()
+                radio_todas = self.window.child_window(
+                    title="Todas",
+                    class_name="TRadioButton",
+                    found_index=0
+                )
+                radio_todas.click_input()
+            
             consultar_btn = None
             consultar_btn = self.window.descendants(control_type="Pane")[-4]
             consultar_btn.click_input()

@@ -70,11 +70,29 @@ class NFEmissionPage:
                 if t.window_text()
             )
             logger.info(mensagem)
-            popup.child_window(title="Não").click_input()
+            try:
+                popup.child_window(title="Não").click_input()
+            except:
+                try:
+                    popup.child_window(title="OK").click_input()
+                except:
+                    pass
+
+        popup = self.window.child_window(
+            title="Confirmação",
+            control_type="Window"
+        )
+
+        popup = Desktop().window(title_re="Confirmação")
+        if popup.exists(timeout=2):
+            popup.set_focus()
+            popup.wait("visible", timeout=3)
+            confirmar = popup.child_window(title="&Não")
+            confirmar.click_input()
+            sleep(4)
 
 
-        
-    
+
     def reduzir_texto(self, texto: str, limite: int = 500) -> str:
         if not texto:
             return ""
@@ -172,6 +190,7 @@ class NFEmissionPage:
         if veiculo_seminovo:
             texto_da_nota_field.type_keys("^a")  # CTRL + A
             texto_da_nota_field.type_keys("^c")
+            texto = pyperclip.paste()
             texto = re.sub(r"(Renavan:\s*)\d+", f"Renavan:{renavan}", texto)
             pyperclip.copy(texto)
             sleep(1)

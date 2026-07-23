@@ -155,7 +155,7 @@ class NBSMainFlow:
             observacao_nbs = (row.get("observacao_nbs") or "").strip()
             proposta_nbs = (row.get("proposta_nbs") or "").strip()
             alienacao_nbs = (row.get("alienacao_nbs") or "").strip()
-            veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip()
+            veiculo_seminovo = (row.get("veiculo_siminovo") or "").strip().lower() == "true"
             novo_renavan = (row.get("renvam_informado") or "").strip()
             file_name = (row.get("cliente") or "").strip() + f"_{chassis[-4:]}.pdf"
             download_path = os.path.join(DATA_OUTPUT_DIR, file_name)
@@ -198,6 +198,7 @@ class NBSMainFlow:
         for context in row_contexts:
             row = context["row"]
             chassis = context["chassis"]
+            veiculo_seminovo = context["veiculo_seminovo"]
 
             if not chassis:
                 continue
@@ -205,11 +206,10 @@ class NBSMainFlow:
             row["nbs_etapa_processamento"] = "nf_emissao"
             nf_main_page = ChassisSearchFlow(window)
             try:
-                search_result = nf_main_page.execute(chassis)
+                search_result = nf_main_page.execute(chassis, veiculo_seminovo)
                 nova_handle = next((w.handle for w in Desktop(backend="win32").windows() if "Propostas" in w.window_text()), None)
                 app = Application(backend="uia").connect(handle=nova_handle)
                 propostas_window = app.window(handle=nova_handle)
-                context["veiculo_seminovo"] = context["veiculo_seminovo"].lower() in ["true", "1", "yes"]
                 confirmacao_mensagem = NFEmissionFlow(propostas_window).execute(
                     context["ficha_observacao"],
                     context["ficha_codigo_cfop"],
