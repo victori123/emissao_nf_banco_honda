@@ -327,6 +327,12 @@ class NBSMainFlow:
                 row["nbs_print_nf_status"] = "failed"
                 row["nbs_print_nf_message"] = str(exc)[:512]
                 logger.warning(f"Falha na impressão da NF para chassis {chassis}: {exc}")
+                self._upsert_chassis_report_raw(
+                    chassis=chassis,
+                    status="Erro",
+                    observacao=row["nbs_print_nf_message"],
+                    report_date=self._row_report_date(row),
+                )
 
             row["nbs_etapa_processamento"] = "concluido"
             
