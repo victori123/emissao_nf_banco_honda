@@ -385,7 +385,9 @@ class CrmAutoPage(BaseCRMPage):
             normalized_text = "".join(ch for ch in normalized_text if not unicodedata.combining(ch)).upper()
 
             textual_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{tag_pattern})\s*[:\-]\s*", re.IGNORECASE)
-            any_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{any_tag_pattern})\s*[:\-]\s*", re.IGNORECASE)
+            # Use ':' as boundary between textual tags to avoid cutting values like
+            # "OBSERVACAO: SEMINOVA - VENDA ...", where '-' is free text.
+            any_tag_regex = re.compile(rf"(?<![A-Z0-9])(?:{any_tag_pattern})\s*:\s*", re.IGNORECASE)
             for tag_match in textual_tag_regex.finditer(normalized_text):
                 start = tag_match.end()
                 next_tag = any_tag_regex.search(normalized_text, start)
