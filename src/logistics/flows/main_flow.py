@@ -10,7 +10,7 @@ from src.logistics.flows.print_nf_flow import PrintNFFlow
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
 from src.shared.utils.execution_report import append_execution_report, upsert_chassis_processing_report
-from config.settings import LOGISTICS_BASE_SERVER, DATA_INPUT_DIR, DATA_OUTPUT_DIR, LOGS_DIR
+from config.settings import LOGISTICS_BASE_SERVER, DATA_INPUT_DIR, DATA_OUTPUT_DIR, REPORT_DIR
 
 from pywinauto import Desktop, Application
 logger = get_logger(__name__)
@@ -377,7 +377,7 @@ class NBSMainFlow:
                 "status": status,
                 "observacao": observacao,
             },
-            LOGS_DIR / "chassis_processing_report.csv",
+            REPORT_DIR / "chassis_processing_report.csv",
         )
 
     def _upsert_chassis_report(self, row: dict):
@@ -407,7 +407,7 @@ class NBSMainFlow:
                 "mensagem": mensagem,
                 "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
             },
-            LOGS_DIR / "execution_report.csv",
+            REPORT_DIR / "execution_report.csv",
         )
 
     def _execute_and_record_flow(self, row: dict, flow_name: str, callable_fn, chassis: str, logger_msg: str):

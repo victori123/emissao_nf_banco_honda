@@ -8,7 +8,7 @@ from src.shared.utils.hardening import (
     validate_runtime_requirements,
 )
 from src.shared.utils.logger import get_logger
-from config.settings import LOGS_DIR
+from config.settings import REPORT_DIR
 
 logger = get_logger("main")
 
@@ -76,7 +76,7 @@ def main():
                 "mensagem": "Execução concluída",
                 "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
             },
-            LOGS_DIR / "execution_report.csv",
+            REPORT_DIR / "execution_report.csv",
         )
 
     except Exception as exc:
@@ -95,7 +95,7 @@ def main():
                 "mensagem": str(exc)[:512],
                 "arquivo_log": f"{datetime.now():%Y-%m-%d}.log",
             },
-            LOGS_DIR / "execution_report.csv",
+            REPORT_DIR / "execution_report.csv",
         )
         sys.exit(1)
     finally:

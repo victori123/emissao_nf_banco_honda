@@ -22,8 +22,9 @@ LOGISTICS_NFS_SERVER = os.getenv("LOGISTICS_NFS_SERVER", r"C:\NBS\Nfvendas")
 DATA_INPUT_DIR  = BASE_DIR / "data" / "input"
 DATA_OUTPUT_DIR = BASE_DIR / "data" / "output"
 LOGS_DIR        = BASE_DIR / "data" / "logs"
+REPORT_DIR      = Path(os.getenv("REPORT_DIR", str(LOGS_DIR)))
 
-for d in (DATA_INPUT_DIR, DATA_OUTPUT_DIR, LOGS_DIR):
+for d in (DATA_INPUT_DIR, DATA_OUTPUT_DIR, LOGS_DIR, REPORT_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 # --- Retry ---

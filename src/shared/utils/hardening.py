@@ -17,6 +17,7 @@ from config.settings import (
     LOGISTICS_BASE_SERVER,
     LOGISTICS_NFS_SERVER,
     LOGS_DIR,
+    REPORT_DIR,
 )
 
 
@@ -104,6 +105,7 @@ def validate_runtime_requirements(selected_bots: list[str]) -> None:
         _ensure_writable_dir(DATA_INPUT_DIR)
         _ensure_writable_dir(DATA_OUTPUT_DIR)
         _ensure_writable_dir(LOGS_DIR)
+        _ensure_writable_dir(REPORT_DIR)
     except Exception as exc:
         errors.append(f"Sem permissão de escrita em diretórios de dados/logs: {exc}")
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from config.settings import LOGS_DIR
+from config.settings import REPORT_DIR
 
 REPORT_COLUMNS = [
     "data_execucao",
@@ -31,7 +31,7 @@ def get_execution_report_path(report_path: str | Path | None = None) -> Path:
     if report_path is not None:
         path = Path(report_path)
     else:
-        path = LOGS_DIR / "execution_report.csv"
+        path = REPORT_DIR / "execution_report.csv"
 
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
@@ -67,7 +67,7 @@ def get_chassis_report_path(report_path: str | Path | None = None) -> Path:
     if report_path is not None:
         path = Path(report_path)
     else:
-        path = LOGS_DIR / "chassis_processing_report.csv"
+        path = REPORT_DIR / "chassis_processing_report.csv"
 
     path.parent.mkdir(parents=True, exist_ok=True)
     return path

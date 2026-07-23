@@ -81,6 +81,7 @@ LOGISTICS_NFS_SERVER=C:\NBS\Nfvendas
 
 CRM_BASE_URL=http://crm.grupoaccampo.com.br
 LOGISTICS_BASE_SERVER=C:\NBS\ger_veic
+REPORT_DIR=\\\\servidor\\compartilhado\\honda\\reports
 
 HEADLESS=false
 BROWSER=chrome
@@ -95,6 +96,7 @@ Observações:
 
 - O projeto já tenta carregar `.env` automaticamente.
 - Os diretórios `data/input`, `data/output` e `data/logs` são criados automaticamente.
+- `REPORT_DIR` é opcional; quando informado, os relatórios CSV são gravados nesse diretório (ex.: rede). Sem ele, usa `data/logs`.
 - O modo `headless` só se aplica ao CRM web; a automação da logística depende de interface gráfica do Windows.
 
 ## Instalação
@@ -220,7 +222,7 @@ Campos de retorno comuns adicionados no fluxo de logística:
 
 ## Logs e rastreabilidade
 
-Durante a execução, o projeto gera artefatos em `data/logs`:
+Durante a execução, o projeto gera artefatos de log em `data/logs` e relatórios em `REPORT_DIR` (ou `data/logs` quando não configurado):
 
 - log diário com nome no formato `YYYY-MM-DD.log`
 - `execution_report.csv` com status consolidado de cada execução
