@@ -15,11 +15,29 @@ from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
 logger = get_logger(__name__)
 PROCESSED_PDF_DIR = DATA_OUTPUT_DIR / "processado"
+PROCESSED_CSV_DIR = DATA_OUTPUT_DIR / "processados"
 
 
 def get_attachment_rows(csv_path: Path) -> list[dict]:
     rows = load_csv(csv_path)
     return [row for row in rows if (row.get("nbs_attachment_path") or row.get("attachment_path"))]
+
+
+def is_attachment_success(row: dict) -> bool:
+    return str(row.get("crm_attachment_status") or "").strip().lower() == "success"
+
+
+def get_pending_attachment_rows(rows: list[dict]) -> list[dict]:
+    return [
+        row
+        for row in rows
+        if (row.get("nbs_attachment_path") or row.get("attachment_path")) and not is_attachment_success(row)
+    ]
+
+
+def all_attachment_rows_succeeded(rows: list[dict]) -> bool:
+    attachment_rows = [row for row in rows if (row.get("nbs_attachment_path") or row.get("attachment_path"))]
+    return bool(attachment_rows) and all(is_attachment_success(row) for row in attachment_rows)
 
 
 def update_attachment_result(row: dict, status: str, error: str = "") -> None:
@@ -64,6 +82,17 @@ def move_pdf_to_processed(pdf_file: Path) -> Path:
     return destination
 
 
+def move_csv_to_processed(csv_file: Path) -> Path:
+    PROCESSED_CSV_DIR.mkdir(parents=True, exist_ok=True)
+    destination = PROCESSED_CSV_DIR / csv_file.name
+
+    if destination.exists():
+        destination = PROCESSED_CSV_DIR / f"{csv_file.stem}_{datetime.now():%Y%m%d_%H%M%S}{csv_file.suffix}"
+
+    shutil.move(str(csv_file), str(destination))
+    return destination
+
+
 def _upsert_attachment_chassis_status(chassi: str, status: str, observacao: str) -> None:
     normalized_chassi = str(chassi or "").strip()
     if not normalized_chassi:
@@ -92,6 +121,30 @@ def run(driver) -> list[str]:
         append_execution_report(execution_report_row(None, 0, 0, "Nenhum CSV com nbs_attachment_path encontrado"))
         return []
 
+    csv_contexts: list[tuple[Path, list[dict], list[dict]]] = []
+    for csv_path in attachment_csvs:
+        all_rows = load_csv(csv_path)
+        pending_rows = get_pending_attachment_rows(all_rows)
+        csv_contexts.append((csv_path, all_rows, pending_rows))
+
+    pending_total = sum(len(pending_rows) for _, _, pending_rows in csv_contexts)
+    if pending_total == 0:
+        moved_csvs: list[str] = []
+        for csv_path, all_rows, _ in csv_contexts:
+            if all_attachment_rows_succeeded(all_rows):
+                moved_path = move_csv_to_processed(csv_path)
+                moved_csvs.append(moved_path.name)
+                logger.info("CSV sem pendencias movido para processados: %s", moved_path)
+
+        message = (
+            "Sem anexos pendentes; CSVs movidos para processados"
+            if moved_csvs
+            else "Sem anexos pendentes para envio"
+        )
+        append_execution_report(execution_report_row(", ".join(sorted(csv_path.name for csv_path in attachment_csvs)), 0, 0, message))
+        logger.info("=== END: attach_nfs_flow ===")
+        return []
+
     LoginPage(driver).open().login(CRMCredentials.USERNAME, CRMCredentials.PASSWORD)
 
     main_page = MainPage(driver)
@@ -103,9 +156,11 @@ def run(driver) -> list[str]:
     crm_auto_page.go_to_crm_autos()
 
 
-    for csv_path in attachment_csvs:
-        rows = get_attachment_rows(csv_path)
+    for csv_path, all_rows, rows in csv_contexts:
         if not rows:
+            if all_attachment_rows_succeeded(all_rows):
+                moved_path = move_csv_to_processed(csv_path)
+                logger.info("CSV com anexos ja concluidos movido para processados: %s", moved_path)
             continue
 
         for row in rows:
@@ -145,7 +200,11 @@ def run(driver) -> list[str]:
                 failed_rows += 1
                 logger.exception("Falha ao anexar PDF ao CRM: %s", pdf_file.name)
 
-        save_csv(rows, csv_path)
+        save_csv(all_rows, csv_path)
+
+        if all_attachment_rows_succeeded(all_rows):
+            moved_path = move_csv_to_processed(csv_path)
+            logger.info("CSV movido para processados apos concluir anexos: %s", moved_path)
 
     append_execution_report(execution_report_row(", ".join(sorted(csv_path.name for csv_path in attachment_csvs)), total_rows, failed_rows))
 
