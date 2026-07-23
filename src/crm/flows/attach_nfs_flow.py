@@ -8,6 +8,7 @@ from src.crm.pages.main_page import MainPage
 from src.crm.pages.crm_auto_page import CrmAutoPage
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
+from src.shared.utils.retry import retry
 from src.shared.utils.execution_report import append_execution_report, upsert_chassis_processing_report
 from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
@@ -77,6 +78,7 @@ def _upsert_attachment_chassis_status(chassi: str, status: str, observacao: str)
         }
     )
 
+@retry()
 def run(driver) -> list[str]:
     logger.info("=== START: attach_nfs_flow ===")
 
