@@ -303,10 +303,10 @@ class NFEmissionPage:
 
         pane.click_input(coords=(x - rect.left, y - rect.top))
 
-    def _capturar_mensagem_popup(self, title):
+    def _capturar_mensagem_popup(self, title, timeout_total: int = 180, tentativa_sleep: int = 3):
         try:
             sleep(3)
-            deadline = time() + 180
+            deadline = time() + timeout_total
             popup = None
 
             while time() < deadline:
@@ -320,7 +320,7 @@ class NFEmissionPage:
                         popup.wait("visible", timeout=3)
                         break
                     except Exception:
-                        sleep(3)
+                        sleep(tentativa_sleep)
 
             if popup is None:
                 return "", None
@@ -399,10 +399,34 @@ class NFEmissionPage:
         logger.info(f"Clickou em OK na primeira janela de Informação com a msg {mensagem_atencao}")
 
         if self._is_success_message(mensagem_os):
-            mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(title=".*Informa*")
-            ok_button = janela_informacao_segunda.child_window(title="Ok")
-            ok_button.click_input()
-            logger.info(f"Clickou em OK na segunda janela de Informação com a msg {mensagem}")
+            # Essa janela costuma aparecer rápido; timeout curto evita bloqueio longo quando ela não abre.
+            mensagem, janela_informacao_segunda = self._capturar_mensagem_popup(
+                title=".*Informa*",
+                timeout_total=12,
+                tentativa_sleep=1
+            )
+            if janela_informacao_segunda is not None:
+                ok_button = janela_informacao_segunda.child_window(title="Ok")
+                ok_button.click_input()
+                logger.info(f"Clickou em OK na segunda janela de Informação com a msg {mensagem}")
+                return mensagem_os
+
+            # Fluxo alternativo: em alguns casos de falha aparece popup de Erro no lugar da 2a Informação.
+            mensagem_popup_erro, janela_erro = self._capturar_mensagem_popup(
+                title=".*Erro.*",
+                timeout_total=8,
+                tentativa_sleep=1
+            )
+            if janela_erro is not None:
+                try:
+                    ok_button = janela_erro.child_window(title="OK")
+                    ok_button.click_input()
+                except Exception:
+                    pass
+                logger.info(f"Popup de erro capturado após confirmação: {mensagem_popup_erro}")
+                raise RPAException(mensagem_popup_erro or mensagem_os)
+
+            # Se não houve 2a Informação nem popup de Erro, mantém retorno de sucesso já validado.
             return mensagem_os
 
         # Em alguns erros, a segunda janela "Informação" não abre e surge um popup "Erro".
