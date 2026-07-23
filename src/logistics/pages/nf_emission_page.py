@@ -430,7 +430,11 @@ class NFEmissionPage:
             return mensagem_os
 
         # Em alguns erros, a segunda janela "Informação" não abre e surge um popup "Erro".
-        mensagem_popup_erro, janela_erro = self._capturar_mensagem_popup(title=".*Erro.*")
+        mensagem_popup_erro, janela_erro = self._capturar_mensagem_popup(
+            title=".*Erro.*",
+            timeout_total=10,
+            tentativa_sleep=1
+        )
         if janela_erro is not None:
             try:
                 ok_button = janela_erro.child_window(title="OK")

@@ -114,8 +114,30 @@ class NBSMainFlow:
 
         row_contexts = self._preprocess_rows(rows, input_file)
 
-        self._run_emission_pass(row_contexts, window)
-        self._run_postprocessing_pass(row_contexts, window)
+        fatal_error_message = ""
+        try:
+            self._run_emission_pass(row_contexts, window)
+            self._run_postprocessing_pass(row_contexts, window)
+        except Exception as exc:
+            fatal_error_message = str(exc)[:512]
+            logger.error(
+                f"Falha inesperada no processamento do arquivo {input_file.name}: {exc}",
+                exc_info=True,
+            )
+
+            # Garante que todas as linhas com chassi recebam status de erro,
+            # permitindo consolidar e atualizar o report por chassi.
+            for context in row_contexts:
+                row = context["row"]
+                chassis = context.get("chassis")
+                if not chassis:
+                    continue
+
+                if not row.get("nbs_nf_emission_status"):
+                    row["nbs_nf_emission_status"] = "failed"
+                    row["nbs_nf_emission_message"] = fatal_error_message
+
+                row["nbs_error"] = fatal_error_message
 
         updated_rows = []
         for context in row_contexts:
@@ -134,13 +156,19 @@ class NBSMainFlow:
         save_csv(updated_rows, output_file)
         logger.info(f"Arquivo atualizado salvo em {output_file}")
 
+        mensagem_execucao = (
+            f"Execução concluída com falha inesperada: {fatal_error_message}"
+            if fatal_error_message
+            else ("Execução concluída" if skipped_count == 0 else f"Processamento com {skipped_count} item(ns) não processado(s)")
+        )
+
         self._append_report_row(
             input_file=input_file,
             etapa_atual="emissao_nf",
             status="SUCESSO" if skipped_count == 0 else "ERRO",
             quantidade_processada=processed_count,
             quantidade_nao_processada=skipped_count,
-            mensagem="Execução concluída" if skipped_count == 0 else f"Processamento com {skipped_count} item(ns) não processado(s)",
+            mensagem=mensagem_execucao,
         )
 
         input_file.unlink()
