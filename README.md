@@ -224,6 +224,14 @@ Durante a execução, o projeto gera artefatos em `data/logs`:
 
 - log diário com nome no formato `YYYY-MM-DD.log`
 - `execution_report.csv` com status consolidado de cada execução
+- `chassis_processing_report.csv` com rastreio por chassi ao longo das etapas
+
+Status esperados no `chassis_processing_report.csv`:
+
+- `Pendente`: chassi extraído no CRM e aguardando início da logística
+- `Processando`: logística/NBS iniciada (ou concluída aguardando anexação no CRM)
+- `Concluido`: anexação no CRM finalizada com sucesso
+- `Erro`: falha em qualquer etapa; a coluna `observacao` recebe a mensagem do erro
 
 ## Testes
 

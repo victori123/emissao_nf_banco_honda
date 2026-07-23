@@ -6,12 +6,29 @@ from src.crm.pages.crm_auto_page import CrmAutoPage
 from src.shared.utils.file_handler import move_pending_files_to_output_dir, save_csv
 from src.shared.utils.logger import get_logger
 from src.shared.utils.retry import retry
-from src.shared.utils.execution_report import append_execution_report
+from src.shared.utils.execution_report import append_execution_report, upsert_chassis_processing_report
 from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 from datetime import datetime
 
 logger = get_logger(__name__)
+
+
+def _upsert_pending_chassis(rows: list[dict]) -> None:
+    report_date = datetime.now().strftime("%Y-%m-%d")
+    for row in rows:
+        chassi = str(row.get("veiculo_chassi") or "").strip()
+        if not chassi:
+            continue
+
+        upsert_chassis_processing_report(
+            {
+                "chassi": chassi,
+                "data": report_date,
+                "status": "Pendente",
+                "observacao": "Extraido no CRM e aguardando Emissao de NF no NBS",
+            }
+        )
 
 @retry()
 def run(driver: Any) -> list[dict]:
@@ -45,6 +62,7 @@ def run(driver: Any) -> list[dict]:
     # Step 4 – Persist results
     output_path = DATA_INPUT_DIR / f"crm_nfs_{datetime.now():%Y%m%d_%H%M%S}.csv"
     save_csv(all_nfs, output_path)
+    _upsert_pending_chassis(all_nfs)
     append_execution_report(
         {
             "data_execucao": datetime.now().strftime("%Y-%m-%d"),

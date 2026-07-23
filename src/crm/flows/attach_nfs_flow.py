@@ -8,7 +8,7 @@ from src.crm.pages.main_page import MainPage
 from src.crm.pages.crm_auto_page import CrmAutoPage
 from src.shared.utils.file_handler import load_csv, save_csv
 from src.shared.utils.logger import get_logger
-from src.shared.utils.execution_report import append_execution_report
+from src.shared.utils.execution_report import append_execution_report, upsert_chassis_processing_report
 from config.credentials import CRMCredentials
 from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
@@ -62,6 +62,21 @@ def move_pdf_to_processed(pdf_file: Path) -> Path:
     shutil.move(str(pdf_file), str(destination))
     return destination
 
+
+def _upsert_attachment_chassis_status(chassi: str, status: str, observacao: str) -> None:
+    normalized_chassi = str(chassi or "").strip()
+    if not normalized_chassi:
+        return
+
+    upsert_chassis_processing_report(
+        {
+            "chassi": normalized_chassi,
+            "data": datetime.now().strftime("%Y-%m-%d"),
+            "status": status,
+            "observacao": observacao,
+        }
+    )
+
 def run(driver) -> list[str]:
     logger.info("=== START: attach_nfs_flow ===")
 
@@ -97,11 +112,13 @@ def run(driver) -> list[str]:
             chassi = str(row.get("veiculo_chassi") or "")
             numero_evento = str(row.get("numero") or "")
             if not pdf_path:
+                _upsert_attachment_chassis_status(chassi, "Erro", "Caminho do PDF nao informado para anexacao")
                 continue
 
             pdf_file = Path(pdf_path)
             if not pdf_file.exists():
                 update_attachment_result(row, "failed", f"Arquivo não encontrado: {pdf_path}")
+                _upsert_attachment_chassis_status(chassi, "Erro", f"Arquivo nao encontrado: {pdf_path}")
                 failed_rows += 1
                 logger.warning("PDF não encontrado para anexar: %s", pdf_path)
                 continue
@@ -118,9 +135,11 @@ def run(driver) -> list[str]:
                 except Exception as move_exc:
                     row["crm_attachment_error"] = f"Anexo concluido; falha ao mover PDF: {str(move_exc)[:256]}"
                     logger.warning("Falha ao mover PDF %s para processado: %s", pdf_file, move_exc)
+                _upsert_attachment_chassis_status(chassi, "Concluido", "Anexo no CRM concluido com sucesso")
                 attached_files.append(pdf_file.name)
             except Exception as exc:
                 update_attachment_result(row, "failed", str(exc)[:512])
+                _upsert_attachment_chassis_status(chassi, "Erro", str(exc)[:512])
                 failed_rows += 1
                 logger.exception("Falha ao anexar PDF ao CRM: %s", pdf_file.name)
 
