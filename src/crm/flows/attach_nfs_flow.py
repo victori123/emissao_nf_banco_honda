@@ -15,7 +15,7 @@ from config.settings import DATA_INPUT_DIR, DATA_OUTPUT_DIR
 
 logger = get_logger(__name__)
 PROCESSED_PDF_DIR = DATA_OUTPUT_DIR / "processado"
-PROCESSED_CSV_DIR = DATA_OUTPUT_DIR / "processados"
+PROCESSED_CSV_DIR = DATA_OUTPUT_DIR / "processado"
 
 
 def get_attachment_rows(csv_path: Path) -> list[dict]:

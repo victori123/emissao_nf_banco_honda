@@ -130,6 +130,17 @@ class PrintNFPage:
                                 and w.rectangle().height() > 0
                             )
                         )
+                        
+                        popup_uia = Desktop(backend="uia").window(
+                            handle=popup.handle
+                        )
+
+                        popup_uia.child_window(
+                            title="OK",
+                            control_type="Button"
+                        ).click_input()
+                        logger.info("Popup confirmado com sucesso (tentativa %s)", tentativa)
+                        return True
 
                     else:
                         popup = Desktop(backend="win32").window(title_re=title_re)
@@ -297,7 +308,7 @@ class PrintNFPage:
             list_btns = janela_danfe.descendants(control_type="Button")
             botao_imprimir = list_btns[8]
             botao_imprimir.click_input()
-            
+            sleep(2)
             desktop = Desktop(backend="win32")
             janela_imprimir = desktop.window(title_re=".*Imprimir.*")
             janela_imprimir.set_focus()
