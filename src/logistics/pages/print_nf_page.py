@@ -117,8 +117,23 @@ class PrintNFPage:
                     popup = Desktop(backend="uia").window(title_re=title_re)
                     popup.wait("visible enabled ready", timeout=timeout)
                 except Exception:
-                    popup = Desktop(backend="win32").window(title_re=title_re)
-                    popup.wait("visible enabled ready", timeout=timeout)
+                    if 'NBS-Controle de Notas' in title_re:
+                        janelas = Desktop(backend="win32").windows(
+                            title_re='.*NBS-Controle de Notas.*'
+                        )
+
+                        popup = next(
+                            w for w in janelas
+                            if (
+                                w.is_enabled()
+                                and w.rectangle().width() > 0
+                                and w.rectangle().height() > 0
+                            )
+                        )
+
+                    else:
+                        popup = Desktop(backend="win32").window(title_re=title_re)
+                        popup.wait("visible enabled ready", timeout=timeout)
 
                 popup.set_focus()
 
