@@ -405,6 +405,17 @@ class NFEmissionPage:
             logger.info(f"Clickou em OK na segunda janela de Informação com a msg {mensagem}")
             return mensagem_os
 
+        # Em alguns erros, a segunda janela "Informação" não abre e surge um popup "Erro".
+        mensagem_popup_erro, janela_erro = self._capturar_mensagem_popup(title=".*Erro.*")
+        if janela_erro is not None:
+            try:
+                ok_button = janela_erro.child_window(title="OK")
+                ok_button.click_input()
+            except Exception:
+                pass
+            logger.info(f"Popup de erro capturado após confirmação: {mensagem_popup_erro}")
+            raise RPAException(mensagem_popup_erro or mensagem_os)
+
         if self._tem_erro(mensagem_os):
             raise RPAException(mensagem_os)
 
